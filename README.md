@@ -1,6 +1,6 @@
 # Advent of Code 2022
 
-https://adventofcode.com/2021
+https://adventofcode.com/2022
 
 Solved in rust as a learning exercise
 
