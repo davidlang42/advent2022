@@ -7,28 +7,27 @@ fn main() {
         let filename = &args[1];
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
-        println!("Max sum: {}", find_max_sum(&text));
+        let mut sums = find_sums(&text);
+        sums.sort();
+        println!("Max sum: {}", sums.last().expect("will have at least 1"));
+        println!("Top 3 sum: {}", sums.iter().rev().take(3).sum::<u32>());
     } else {
         println!("Please provide 1 argument: Filename");
     }
 }
 
-fn find_max_sum(text: &String) -> u32 {
+fn find_sums(text: &String) -> Vec<u32> {
     let mut sum: u32 = 0;
-    let mut max: u32 = 0;
+    let mut list: Vec<u32> = Vec::new();
     for s in text.split("\r\n") {
         if s.len() == 0 {
-            if sum > max {
-                max = sum;
-            }
+            list.push(sum);
             sum = 0;
         } else {
             let value: u32 = s.parse().expect(&format!("Error parsing number {}", s));
             sum += value;
         }
     }
-    if sum > max {
-        max = sum;
-    }
-    return max;
+    list.push(sum);
+    return list;
 }
