@@ -14,21 +14,27 @@ fn main() {
         let filename = &args[1];
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
-        let scores: Vec<i32> = text.split("\r\n").map(|s| calculate_score(s)
+        let mut scores: Vec<i32> = text.split("\r\n").map(|s| calculate_score(s, false)
             .expect(&format!("Error calculating score of {}", s))).collect();
-        println!("Total score: {}", scores.iter().sum::<i32>());
+        println!("Part 1 total score: {}", scores.iter().sum::<i32>());
+        scores = text.split("\r\n").map(|s| calculate_score(s, true)
+            .expect(&format!("Error calculating score of {}", s))).collect();
+        println!("Part 2 total score: {}", scores.iter().sum::<i32>());
     } else {
         println!("Please provide 1 argument: Filename");
     }
 }
 
-fn calculate_score(text: &str) -> Result<i32, String> {
+fn calculate_score(text: &str, process_as_need: bool) -> Result<i32, String> {
     let hands: Vec<HandChoice> = text.split(" ").map(|s| parse_hand(s).expect(&format!("Hand could not be parsed: {}", s))).collect();
     if hands.len() != 2 {
         return Err(format!("More than 2 hands found in: {}", text));
     }
     let them = hands[0];
-    let us = hands[1];
+    let mut us = hands[1];
+    if process_as_need {
+        us = process_need(them, us);
+    }
     let shape = match us {
         HandChoice::Rock => 1,
         HandChoice::Paper => 2,
@@ -53,9 +59,25 @@ fn parse_hand(hand: &str) -> Result<HandChoice, String> {
         'A' => Ok(HandChoice::Rock),
         'B' => Ok(HandChoice::Paper),
         'C' => Ok(HandChoice::Scissors),
-        'X' => Ok(HandChoice::Rock),
-        'Y' => Ok(HandChoice::Paper),
-        'Z' => Ok(HandChoice::Scissors),
+        'X' => Ok(HandChoice::Rock), // need lose
+        'Y' => Ok(HandChoice::Paper), // need draw
+        'Z' => Ok(HandChoice::Scissors), // need win
         _ => Err(format!("Incorrect hand choice: {}", c))
+    }
+}
+
+// yes I know this is awful but oh well
+fn process_need(them: HandChoice, need: HandChoice) -> HandChoice {
+    match (them, need) {
+        // draw
+        (a, HandChoice::Paper) => a,
+        // win
+        (HandChoice::Rock, HandChoice::Scissors) => HandChoice::Paper,
+        (HandChoice::Paper, HandChoice::Scissors) => HandChoice::Scissors,
+        (HandChoice::Scissors, HandChoice::Scissors) => HandChoice::Rock,
+        // lose
+        (HandChoice::Rock, HandChoice::Rock) => HandChoice::Scissors,
+        (HandChoice::Paper, HandChoice::Rock) => HandChoice::Rock,
+        (HandChoice::Scissors, HandChoice::Rock) => HandChoice::Paper,
     }
 }
