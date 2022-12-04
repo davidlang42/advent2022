@@ -7,8 +7,11 @@ fn main() {
         let filename = &args[1];
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
-        let priorities: Vec<u32> = text.split("\r\n").map(|s| get_priority(find_common(split_line(s)))).collect();
-        println!("Sum of priorities: {}", priorities.iter().sum::<u32>());
+        let items: Vec<u32> = text.split("\r\n").map(|s| get_priority(find_common(&split_line(s)))).collect();
+        println!("Sum of item priorities: {}", items.iter().sum::<u32>());
+        let groups: Vec<Vec<&str>> = make_groups(text.split("\r\n").collect(), 3);
+        let badges: Vec<u32> = groups.iter().map(|g| get_priority(find_common(g))).collect();
+        println!("Sum of badge priorities: {}", badges.iter().sum::<u32>());
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -22,7 +25,7 @@ fn get_priority(c: char) -> u32 {
     }
 }
 
-fn find_common(sets: Vec<&str>) -> char {
+fn find_common(sets: &Vec<&str>) -> char {
     for c in sets[0].chars() {
         let mut common = true;
         for i in 1..sets.len() {
@@ -44,4 +47,18 @@ fn split_line(line: &str) -> Vec<&str> {
     segments.push(&line[0..half]);
     segments.push(&line[half..]);
     segments
+}
+
+fn make_groups(lines: Vec<&str>, size: u32) -> Vec<Vec<&str>> {
+    let mut groups: Vec<Vec<&str>> = Vec::new();
+    let mut i: usize = 0;
+    while i < lines.len() {
+        let mut group: Vec<&str> = Vec::new();
+        for _ in 0..size {
+            group.push(lines[i]);
+            i += 1;
+        }
+        groups.push(group);
+    }
+    groups
 }
