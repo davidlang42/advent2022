@@ -21,6 +21,8 @@ fn main() {
         let pairs: Vec<Pair> = text.split("\r\n").map(|s| s.parse().unwrap()).collect();
         let count = pairs.iter().filter(|p| full_overlap(&p.a,&p.b) || full_overlap(&p.b,&p.a)).count();
         println!("Count of full overlap within pairs: {}", count);
+        let count = pairs.iter().filter(|p| partial_overlap(&p.a,&p.b)).count();
+        println!("Count of partial overlap within pairs: {}", count);
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -28,6 +30,13 @@ fn main() {
 
 fn full_overlap(outer: &Range, inner: &Range) -> bool {
     inner.start >= outer.start && inner.end <= outer.end
+}
+
+fn partial_overlap(outer: &Range, inner: &Range) -> bool {
+    inner.start >= outer.start && inner.start <= outer.end
+    || inner.end >= outer.start && inner.end <= outer.end
+    || outer.start >= inner.start && outer.start <= inner.end
+    || outer.end >= inner.start && outer.end <= inner.end
 }
 
 impl FromStr for Pair {
