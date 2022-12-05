@@ -15,12 +15,20 @@ fn main() {
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
         let sections: Vec<&str> = text.split("\r\n\r\n").collect();
-        let mut stacks = parse_starting_map(sections[0]);
+        let original_stacks = parse_starting_map(sections[0]);
         let instructions: Vec<Instruction> = sections[1].split("\r\n").map(|s| s.parse().unwrap()).collect();
-        for i in instructions {
-            process_instruction(&mut stacks, i);
+
+        let mut stacks = original_stacks.clone();
+        for i in &instructions {
+            process_instruction_9000(&mut stacks, i);
         }
-        println!("Top of each stack: {}", stacks.iter().map(|s| s[s.len()-1]).collect::<String>());
+        println!("Create Mover 9000: {}", stacks.iter().map(|s| s[s.len()-1]).collect::<String>());
+
+        stacks = original_stacks.clone();
+        for i in &instructions {
+            process_instruction_9001(&mut stacks, i);
+        }
+        println!("Create Mover 9001: {}", stacks.iter().map(|s| s[s.len()-1]).collect::<String>());
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -66,9 +74,18 @@ impl FromStr for Instruction {
     }
 }
 
-fn process_instruction(stacks: &mut Vec<Vec<char>>, i: Instruction) {
+fn process_instruction_9000(stacks: &mut Vec<Vec<char>>, i: &Instruction) {
     for _ in 0..i.count {
         let c = stacks[i.from-1].pop().unwrap();
         stacks[i.to-1].push(c);
     }
+}
+
+fn process_instruction_9001(stacks: &mut Vec<Vec<char>>, i: &Instruction) {
+    let mut temp: Vec<char> = Vec::new();
+    for _ in 0..i.count {
+        temp.push(stacks[i.from-1].pop().unwrap());
+    }
+    temp.reverse();
+    stacks[i.to-1].append(&mut temp);
 }
