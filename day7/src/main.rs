@@ -74,6 +74,10 @@ fn main() {
         println!("Root contains {} files and {} dirs", root.files.len(), root.directories.len());
         let sum = sum_dirs(&root, 100000);
         println!("Sum of directories up to max size: {}", sum);
+        let free = 70000000 - get_dir_size(&root);
+        let required = 30000000 - free;
+        let delete = find_smallest_dir(&root, required);
+        println!("Smallest dir to provide enough space: {}", delete);
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -118,4 +122,17 @@ fn consume_commands(pwd: &mut Directory, commands: &mut VecDeque<Command>) {
             }
         }
     }
+}
+
+fn find_smallest_dir(pwd: &Directory, min_size: usize) -> usize {
+    let mut smallest = get_dir_size(pwd);
+    if smallest >= min_size {
+        for dir in &pwd.directories {
+            let candidate = find_smallest_dir(dir, min_size);
+            if candidate < smallest && candidate >= min_size {
+                smallest = candidate;
+            }
+        }
+    }
+    smallest
 }
