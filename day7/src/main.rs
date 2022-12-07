@@ -3,6 +3,8 @@ use std::fs;
 use std::str::FromStr;
 use std::collections::VecDeque;
 
+const NL: &str = "\n";
+
 struct File {
     name: String,
     size: usize
@@ -30,7 +32,7 @@ impl FromStr for Command {
 
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         if text.starts_with("cd") {
-            let dir = &text[3..];
+            let dir = text[3..].split(NL).next().unwrap();
             if dir.eq("..") {
                 Ok(Command::ChangeBack)
             } else if dir.eq("/") {
@@ -39,12 +41,24 @@ impl FromStr for Command {
                 Ok(Command::ChangeDir(dir.to_owned()))
             }
         } else if text.starts_with("ls") {
-            let lines = text.split("\n").skip(1).filter(|s| s.len() != 0).map(|s| s.to_owned()).collect();
+            let lines = text.split(NL).skip(1).filter(|s| s.len() != 0).map(|s| s.to_owned()).collect();
             Ok(Command::List(lines))
         } else {
             Err(format!("Command not found: {}", text))
         }
     }
+}
+
+fn sum_dirs(pwd: &Directory, max_size: usize) -> usize {
+    let mut sum = 0;
+    let size = get_dir_size(pwd);
+    if size <= max_size {
+        sum += size;
+    };
+    for dir in &pwd.directories {
+        sum += sum_dirs(&dir, max_size);
+    }
+    sum
 }
 
 fn main() {
@@ -57,8 +71,9 @@ fn main() {
         println!("Number of commands: {}", commands.len());
         let mut root = Directory { name: String::new(), files: Vec::new(), directories: Vec::new() };
         consume_commands(&mut root, &mut commands);
-        println!("Number of files in root: {}", root.files.len());
-        println!("Number of dirs in root: {}", root.directories.len());
+        println!("Root contains {} files and {} dirs", root.files.len(), root.directories.len());
+        let sum = sum_dirs(&root, 100000);
+        println!("Sum of directories up to max size: {}", sum);
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -68,9 +83,9 @@ fn consume_commands(pwd: &mut Directory, commands: &mut VecDeque<Command>) {
     while let Some(command) = commands.pop_front() {
         match command {
             Command::ChangeDir(dir) => {
-                match pwd.directories.iter().filter(|d| d.name.eq(&dir)).next() {
-                    Some(existing) => {
-                        //TODO consume_commands(existing, commands);
+                match pwd.directories.iter_mut().filter(|d| d.name.eq(&dir)).next() {
+                    Some(mut existing) => {
+                        consume_commands(&mut existing, commands);
                     },
                     None => {
                         let mut new = Directory { name: dir, directories: Vec::new(), files: Vec::new() };
