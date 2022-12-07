@@ -80,7 +80,10 @@ fn consume_commands(pwd: &mut Directory, commands: &mut VecDeque<Command>) {
                 }
             },
             Command::ChangeRoot => {
-                //TODO
+                if !pwd.name.eq("") {
+                    commands.push_front(command);
+                    break;
+                }
             },
             Command::ChangeBack => {
                 break;
