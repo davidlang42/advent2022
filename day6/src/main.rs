@@ -10,7 +10,8 @@ fn main() {
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
         for line in text.split("\r\n") {
-            println!("Result: {}", find_unique_string(line, 4));
+            println!("Result(4): {}", find_unique_string(line, 4));
+            println!("Result(14): {}", find_unique_string(line, 14));
         }
     } else {
         println!("Please provide 1 argument: Filename");
