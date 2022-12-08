@@ -31,6 +31,8 @@ fn main() {
         mark_visible(&mut visible, &grid, Direction::FromTop);
         mark_visible(&mut visible, &grid, Direction::FromBottom);
         println!("Total visible: {}", count(&visible));
+        let score = highest_scenic_score(&grid);
+        println!("Highest score: {}", score);
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -61,4 +63,48 @@ fn mark_visible(visible: &mut Vec<Vec<bool>>, grid: &Vec<Vec<u32>>, direction: D
             }
         }
     }
+}
+
+fn highest_scenic_score(grid: &Vec<Vec<u32>>) -> usize {
+    let mut max = 0;
+    for r in 0..grid.len() {
+        for c in 0..grid[0].len() {
+            let value = find_scenic_score(grid, r, c);
+            if value > max {
+                max = value;
+            }
+        }
+    }
+    max
+}
+
+fn find_scenic_score(grid: &Vec<Vec<u32>>, r: usize, c: usize) -> usize {
+    find_viewing_distance(grid, r, c, Direction::FromLeft)
+        * find_viewing_distance(grid, r, c, Direction::FromRight)
+        * find_viewing_distance(grid, r, c, Direction::FromTop)
+        * find_viewing_distance(grid, r, c, Direction::FromBottom)
+}
+
+fn find_viewing_distance(grid: &Vec<Vec<u32>>, from_row: usize, from_col: usize, direction: Direction) -> usize {
+    let (r_delta, c_delta): (isize, isize) = match direction {
+        Direction::FromLeft => (-1, 0),
+        Direction::FromRight => (1, 0),
+        Direction::FromTop => (0, -1),
+        Direction::FromBottom => (0, 1)
+    };
+    let mut distance = 0;
+    let height = grid[from_row][from_col];
+    let mut r: isize = from_row as isize + r_delta;
+    let mut c: isize = from_col as isize + c_delta;
+    let r_max: isize = grid.len().try_into().unwrap();
+    let c_max: isize = grid[0].len().try_into().unwrap();
+    while r >= 0 && r < r_max && c >= 0 && c < c_max {
+        distance += 1;
+        if grid[r as usize][c as usize] >= height {
+            break;
+        }
+        r += r_delta;
+        c += c_delta;
+    }
+    distance
 }
