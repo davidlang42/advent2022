@@ -18,36 +18,47 @@ fn main() {
             .expect(&format!("Error reading from {}", filename));
         let grid: Vec<Vec<u32>> = text.split(NL).map(|row| row.chars().map(|c| c.to_digit(10).unwrap()).collect()).collect();
         println!("Rows: {}, Columns: {}", grid.len(), grid[0].len());
-        let visible = count_visible(&grid, Direction::FromLeft)
-            + count_visible(&grid, Direction::FromRight)
-            + count_visible(&grid, Direction::FromTop)
-            + count_visible(&grid, Direction::FromBottom);
-        println!("Total visible: {}", visible);
+        let mut visible: Vec<Vec<bool>> = Vec::new();
+        for _ in 0..grid.len() {
+            let mut row = Vec::new();
+            for _ in 0..grid[0].len() {
+                row.push(false);
+            }
+            visible.push(row);
+        }
+        mark_visible(&mut visible, &grid, Direction::FromLeft);
+        mark_visible(&mut visible, &grid, Direction::FromRight);
+        mark_visible(&mut visible, &grid, Direction::FromTop);
+        mark_visible(&mut visible, &grid, Direction::FromBottom);
+        println!("Total visible: {}", count(&visible));
     } else {
         println!("Please provide 1 argument: Filename");
     }
 }
 
-fn count_visible(grid: &Vec<Vec<u32>>, direction: Direction) -> usize {
-    let mut previous: u32;
-    let (swap, r_range, c_range) = match direction {
-        Direction::FromLeft => (false, 0..grid.len(), 0..grid[0].len()),
-        Direction::FromTop => (true, 0..grid[0].len(), 0..grid.len()),
-        Direction::FromRight => (false, 0..grid.len(), grid[0].len()..0),
-        Direction::FromBottom => (true, grid[0].len()..0, 0..grid.len()),
+fn count(visible: &Vec<Vec<bool>>) -> usize {
+    visible.iter().map(|row| row.iter().filter(|b| **b).count()).sum()
+}
+
+fn mark_visible(visible: &mut Vec<Vec<bool>>, grid: &Vec<Vec<u32>>, direction: Direction) {
+    let (swap, r_range, c_range): (bool, Vec<usize>, Vec<usize>) = match direction {
+        Direction::FromLeft => (false, (0..grid.len()).collect(), (0..grid[0].len()).collect()),
+        Direction::FromTop => (true, (0..grid[0].len()).collect(), (0..grid.len()).collect()),
+        Direction::FromRight => (false, (0..grid.len()).collect(), (0..grid[0].len()).rev().collect()),
+        Direction::FromBottom => (true, (0..grid[0].len()).collect(), (0..grid.len()).rev().collect()),
     };
-    let mut count = 0;
     for r in r_range {
-        previous = 0;
+        let mut previous = -1;
         for c in c_range.clone() {
-            let value = if swap { grid[c][r] } else { grid[r][c] };
+            let value: isize = (if swap { grid[c][r] } else { grid[r][c] }).try_into().unwrap();
             if value > previous {
-                count += 1;
+                if swap {
+                    visible[c][r] = true;
+                } else {
+                    visible[r][c] = true;
+                }
                 previous = value;
-            } else {
-                break;
             }
         }
     }
-    count
 }
