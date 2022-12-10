@@ -33,6 +33,11 @@ fn main() {
             sum += cycles[i-1].x * i as isize;
         }
         println!("Summed signal strengths: {}", sum);
+        let mut i = 0;
+        while i + 40 < cycles.len() {
+            println!("{}", render_line(&cycles[i..i+40]));
+            i += 40;
+        }
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -56,4 +61,12 @@ fn run_instruction(previous: &State, instruction: &Instruction) -> Vec<State> {
         Instruction::Noop => vec![*previous],
         Instruction::AddX(x) => vec![*previous, State { x: previous.x + x }]
     }
+}
+
+fn render_line(cycles: &[State]) -> String {
+    cycles.iter().enumerate().map(|(i,s)| if (i as isize - s.x).abs() <= 1 {
+        '#'
+    } else {
+        '.'
+    }).collect::<String>()
 }
