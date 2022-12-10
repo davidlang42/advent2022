@@ -18,8 +18,7 @@ struct Instruction {
 }
 
 struct Rope {
-    head: Point,
-    tail: Point
+    knots: Vec<Point>,
 }
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone)]
@@ -35,15 +34,9 @@ fn main() {
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
         let instructions: Vec<Instruction> = text.split(NL).map(|s| s.parse().unwrap()).collect();
-        let mut rope = Rope { head: Point { x: 0, y: 0}, tail: Point { x: 0, y: 0 }};
-        let mut visited: HashSet<Point> = HashSet::new();
-        for instruction in instructions {
-            for _ in 0..instruction.count {
-                move_rope(&mut rope, &instruction.direction);
-                visited.insert(rope.tail);
-            }
-        }
-        println!("Unique tail positions: {}", visited.len());
+        println!("Unique tail positions for rope length 2: {}", run_simulation(&instructions, 2).len());
+        println!("Unique tail positions for rope length 10: {}", run_simulation(&instructions, 10).len());
+
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -68,17 +61,34 @@ impl FromStr for Instruction {
 }
 
 fn move_rope(rope: &mut Rope, direction: &Direction) {
-    let (x,y) = match direction {
+    let (x, y) = match direction {
         Direction::Right => (1, 0),
         Direction::Up => (0, -1),
         Direction::Down => (0, 1),
         Direction::Left => (-1, 0)
     };
-    rope.head.x += x;
-    rope.head.y += y;
-    let diff = Point { x: rope.head.x - rope.tail.x, y: rope.head.y - rope.tail.y };
-    if diff.x.abs() > 1 || diff.y.abs() > 1 {
-        rope.tail.x += diff.x.signum();
-        rope.tail.y += diff.y.signum();
+    rope.knots[0].x += x;
+    rope.knots[0].y += y;
+    for i in 1..rope.knots.len() {
+        let diff = Point { x: rope.knots[i-1].x - rope.knots[i].x, y: rope.knots[i-1].y - rope.knots[i].y };
+        if diff.x.abs() > 1 || diff.y.abs() > 1 {
+            rope.knots[i].x += diff.x.signum();
+            rope.knots[i].y += diff.y.signum();
+        }
     }
+}
+
+fn run_simulation(instructions: &Vec<Instruction>, rope_length: usize) -> HashSet<Point> {
+    let mut rope = Rope { knots: Vec::new() };
+    for _ in 0..rope_length {
+        rope.knots.push(Point { x: 0, y: 0});
+    }
+    let mut visited: HashSet<Point> = HashSet::new();
+    for instruction in instructions {
+        for _ in 0..instruction.count {
+            move_rope(&mut rope, &instruction.direction);
+            visited.insert(*rope.knots.last().unwrap());
+        }
+    }
+    visited
 }
