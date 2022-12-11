@@ -2,7 +2,6 @@ use std::collections::VecDeque;
 use std::env;
 use std::fs;
 use std::str::FromStr;
-use std::cmp::Ordering::Equal;
 
 struct Monkey {
     throw_count: u32,
@@ -40,9 +39,7 @@ fn main() {
         // println!("Monkey business part1: {}", throws.iter().take(2).product::<f32>());
         // part2
         // monkies = text.split("\r\n\r\n").map(|s| s.parse().unwrap()).collect();
-        for i in 0..10000 {
-            println!("");
-            println!("STARTING ROUND {}", i);
+        for _ in 0..20 {
             run_round(&mut monkies, 1.0);
         }
         for (i, m) in monkies.iter().enumerate() {
@@ -110,13 +107,8 @@ fn run_round(monkies: &mut Vec<Monkey>, worry_decrease_factor: f32) {
         while let Some(item) = monkies[i].items.pop_front() {
             let new_item = run_operation(item, &monkies[i].operation, worry_decrease_factor);
             let new_monkey = run_test(new_item, &monkies[i].test);
-            // println!("Monkey {} throws {} to {}", i, new_item, new_monkey);
-            if new_monkey == i {
-                self_throw.push_back(new_item);
-            } else {
-                monkies[new_monkey].items.push_back(new_item);
-                monkies[i].throw_count += 1;
-            }
+            monkies[new_monkey].items.push_back(new_item);
+            monkies[i].throw_count += 1;
         }
         monkies[i].items.append(&mut self_throw);
     }
