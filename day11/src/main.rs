@@ -2,22 +2,23 @@ use std::collections::VecDeque;
 use std::env;
 use std::fs;
 use std::str::FromStr;
+use std::cmp::Ordering::Equal;
 
 struct Monkey {
-    throw_count: usize,
-    items: VecDeque<usize>,
+    throw_count: u32,
+    items: VecDeque<f32>,
     operation: Operation,
     test: Test
 }
 
 enum Operation {
-    Multiply(usize),
-    Add(usize),
+    Multiply(f32),
+    Add(f32),
     Square
 }
 
 struct Test {
-    divisible_by: usize,
+    divisible_by: f32,
     true_index: usize,
     false_index: usize
 }
@@ -28,14 +29,29 @@ fn main() {
         let filename = &args[1];
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
+        // part1
         let mut monkies: Vec<Monkey> = text.split("\r\n\r\n").map(|s| s.parse().unwrap()).collect();
-        for _ in 0..20 {
-            run_round(&mut monkies);
+        // for _ in 0..20 {
+        //     run_round(&mut monkies, 3);
+        // }
+        // let mut throws: Vec<f32> = monkies.iter().map(|m| m.throw_count).collect();
+        // throws.sort();
+        // throws.reverse();
+        // println!("Monkey business part1: {}", throws.iter().take(2).product::<f32>());
+        // part2
+        // monkies = text.split("\r\n\r\n").map(|s| s.parse().unwrap()).collect();
+        for i in 0..10000 {
+            println!("");
+            println!("STARTING ROUND {}", i);
+            run_round(&mut monkies, 1.0);
         }
-        let mut throws: Vec<usize> = monkies.iter().map(|m| m.throw_count).collect();
+        for (i, m) in monkies.iter().enumerate() {
+            println!("Monky {} has thrown {} items", i, m.throw_count);
+        }
+        let mut throws: Vec<u32> = monkies.iter().map(|m| m.throw_count).collect();
         throws.sort();
         throws.reverse();
-        println!("Monkey business: {}", throws.iter().take(2).product::<usize>())
+        println!("Monkey business part2: {}", throws.iter().take(2).product::<u32>());
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -74,11 +90,11 @@ impl FromStr for Operation {
         Ok(if words[4].eq("old") {
             match words[3] {
                 "*" => Operation::Square,
-                "+" => Operation::Multiply(2),
+                "+" => Operation::Multiply(2.0),
                 _ => panic!("Invalid operation")
             }
         } else {
-            let literal: usize = words[4].parse().unwrap();
+            let literal: f32 = words[4].parse().unwrap();
             match words[3] {
                 "*" => Operation::Multiply(literal),
                 "+" => Operation::Add(literal),
@@ -88,28 +104,35 @@ impl FromStr for Operation {
     }
 }
 
-fn run_round(monkies: &mut Vec<Monkey>) {
+fn run_round(monkies: &mut Vec<Monkey>, worry_decrease_factor: f32) {
     for i in 0..monkies.len() {
+        let mut self_throw: VecDeque<f32> = VecDeque::new();
         while let Some(item) = monkies[i].items.pop_front() {
-            let new_item = run_operation(item, &monkies[i].operation);
+            let new_item = run_operation(item, &monkies[i].operation, worry_decrease_factor);
             let new_monkey = run_test(new_item, &monkies[i].test);
-            monkies[new_monkey].items.push_back(new_item);
-            monkies[i].throw_count += 1;
+            // println!("Monkey {} throws {} to {}", i, new_item, new_monkey);
+            if new_monkey == i {
+                self_throw.push_back(new_item);
+            } else {
+                monkies[new_monkey].items.push_back(new_item);
+                monkies[i].throw_count += 1;
+            }
         }
+        monkies[i].items.append(&mut self_throw);
     }
 }
 
-fn run_operation(old: usize, operation: &Operation) -> usize {
+fn run_operation(old: f32, operation: &Operation, worry_decrease_factor: f32) -> f32 {
     let new = match operation {
         Operation::Square => old * old,
         Operation::Add(delta) => old + delta,
         Operation::Multiply(factor) => old * factor
     };
-    new / 3
+    new / worry_decrease_factor
 }
 
-fn run_test(value: usize, test: &Test) -> usize {
-    if value % test.divisible_by == 0 {
+fn run_test(value: f32, test: &Test) -> usize {
+    if value % test.divisible_by == 0.0 {
         test.true_index
     } else {
         test.false_index
