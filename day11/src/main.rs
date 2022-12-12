@@ -1,23 +1,26 @@
+extern crate num_bigint;
+
 use std::collections::VecDeque;
 use std::env;
 use std::fs;
 use std::str::FromStr;
+use num_bigint::BigUint;
 
 struct Monkey {
     throw_count: u32,
-    items: VecDeque<f32>,
+    items: VecDeque<BigUint>,
     operation: Operation,
     test: Test
 }
 
 enum Operation {
-    Multiply(f32),
-    Add(f32),
+    Multiply(BigUint),
+    Add(BigUint),
     Square
 }
 
 struct Test {
-    divisible_by: f32,
+    divisible_by: BigUint,
     true_index: usize,
     false_index: usize
 }
@@ -33,14 +36,15 @@ fn main() {
         // for _ in 0..20 {
         //     run_round(&mut monkies, 3);
         // }
-        // let mut throws: Vec<f32> = monkies.iter().map(|m| m.throw_count).collect();
+        // let mut throws: Vec<BigUint> = monkies.iter().map(|m| m.throw_count).collect();
         // throws.sort();
         // throws.reverse();
-        // println!("Monkey business part1: {}", throws.iter().take(2).product::<f32>());
+        // println!("Monkey business part1: {}", throws.iter().take(2).product::<BigUint>());
         // part2
         // monkies = text.split("\r\n\r\n").map(|s| s.parse().unwrap()).collect();
-        for _ in 0..20 {
-            run_round(&mut monkies, 1.0);
+        for i in 0..1000 {
+            println!("Round: {}", i);
+            run_round(&mut monkies, &BigUint::from(1u32));
         }
         for (i, m) in monkies.iter().enumerate() {
             println!("Monky {} has thrown {} items", i, m.throw_count);
@@ -87,11 +91,11 @@ impl FromStr for Operation {
         Ok(if words[4].eq("old") {
             match words[3] {
                 "*" => Operation::Square,
-                "+" => Operation::Multiply(2.0),
+                "+" => Operation::Multiply(BigUint::from(2u32)),
                 _ => panic!("Invalid operation")
             }
         } else {
-            let literal: f32 = words[4].parse().unwrap();
+            let literal: BigUint = words[4].parse().unwrap();
             match words[3] {
                 "*" => Operation::Multiply(literal),
                 "+" => Operation::Add(literal),
@@ -101,12 +105,12 @@ impl FromStr for Operation {
     }
 }
 
-fn run_round(monkies: &mut Vec<Monkey>, worry_decrease_factor: f32) {
+fn run_round(monkies: &mut Vec<Monkey>, worry_decrease_factor: &BigUint) {
     for i in 0..monkies.len() {
-        let mut self_throw: VecDeque<f32> = VecDeque::new();
+        let mut self_throw: VecDeque<BigUint> = VecDeque::new();
         while let Some(item) = monkies[i].items.pop_front() {
             let new_item = run_operation(item, &monkies[i].operation, worry_decrease_factor);
-            let new_monkey = run_test(new_item, &monkies[i].test);
+            let new_monkey = run_test(&new_item, &monkies[i].test);
             monkies[new_monkey].items.push_back(new_item);
             monkies[i].throw_count += 1;
         }
@@ -114,17 +118,17 @@ fn run_round(monkies: &mut Vec<Monkey>, worry_decrease_factor: f32) {
     }
 }
 
-fn run_operation(old: f32, operation: &Operation, worry_decrease_factor: f32) -> f32 {
+fn run_operation(old: BigUint, operation: &Operation, worry_decrease_factor: &BigUint) -> BigUint {
     let new = match operation {
-        Operation::Square => old * old,
+        Operation::Square => &old * &old,
         Operation::Add(delta) => old + delta,
         Operation::Multiply(factor) => old * factor
     };
     new / worry_decrease_factor
 }
 
-fn run_test(value: f32, test: &Test) -> usize {
-    if value % test.divisible_by == 0.0 {
+fn run_test(value: &BigUint, test: &Test) -> usize {
+    if value % &test.divisible_by == BigUint::from(0u32) {
         test.true_index
     } else {
         test.false_index
