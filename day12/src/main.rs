@@ -28,12 +28,18 @@ fn main() {
         grid[start.row][start.col] = 'a' as u32;
         grid[finish.row][finish.col] = 'z' as u32;
         let max = Position { row: grid.len() - 1, col: grid[0].len() - 1 };
-        let path = bfs(
-            &start,
+        let path_from_start = bfs(
+            &finish,
             |p| p.successors(&grid, &max),
-            |p| *p == finish
+            |p| *p == start
         ).unwrap();
-        println!("Shortest path: {}", path.len() - 1);
+        println!("Shortest path from start: {}", path_from_start.len() - 1);
+        let path_from_a = bfs(
+            &finish,
+            |p| p.successors(&grid, &max),
+            |p| grid[p.row][p.col] == 'a' as u32
+        ).unwrap();
+        println!("Shortest path from 'a': {}", path_from_a.len() - 1);
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -52,7 +58,7 @@ fn find_marker(text: &str, marker: &str) -> Position {
 fn is_valid(grid: &Vec<Vec<u32>>, from: &Position, to: &Position) -> bool {
     let from_value = grid[from.row][from.col];
     let to_value = grid[to.row][to.col];
-    to_value <= from_value + 1
+    from_value <= to_value + 1
 }
 
 fn connections(max: &Position, from: &Position) -> Vec<Position> {
