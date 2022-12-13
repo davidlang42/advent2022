@@ -1,11 +1,21 @@
 use std::env;
 use std::fs;
-use std::collections::HashSet;
+use pathfinding::prelude::astar;
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone)]
 struct Position {
     row: usize,
     col: usize
+}
+
+impl Position {
+    fn distance(&self, other: &Self) -> u32 {
+        (self.row.abs_diff(other.row) + self.col.abs_diff(other.col)) as u32
+    }
+  
+    fn successors(&self, grid: &Vec<Vec<u32>>, max: &Position) -> Vec<(Self, u32)> {
+        connections(&max, self).iter().filter(|c| is_valid(&grid, self, c)).map(|v| (*v, 1)).collect()
+    }
 }
 
 fn main() {
@@ -20,7 +30,13 @@ fn main() {
         grid[start.row][start.col] = 'a' as u32;
         grid[finish.row][finish.col] = 'z' as u32;
         let max = Position { row: grid.len() - 1, col: grid[0].len() - 1 };
-        println!("Shortest path: {}", shortest_path(&grid, &max, &start, &finish, &mut HashSet::new()));
+        let (_path, length) = astar(
+            &start,
+            |p| p.successors(&grid, &max),
+            |p| p.distance(&finish) / 3,
+            |p| *p == finish
+        ).unwrap();
+        println!("Shortest path: {}", length);
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -34,34 +50,6 @@ fn find_marker(text: &str, marker: &str) -> Position {
         }
     }
     panic!("Marker not found");
-}
-
-fn shortest_path(grid: &Vec<Vec<u32>>, max: &Position, from: &Position, to: &Position, visited: &mut HashSet<Position>) -> usize {
-    if !visited.insert(*from) {
-        // already visited
-        return usize::MAX;
-    }
-    let mut result;
-    if from == to {
-        // already there
-        result = 0;
-    } else {
-        // recurse into valid connections
-        result = usize::MAX;
-        for p in connections(max, from) {
-            if is_valid(grid, from, &p) {
-                let path = shortest_path(grid, max, &p, to, visited);
-                if path < result {
-                    result = path;
-                }
-            }
-        }
-        if result != usize::MAX {
-            result += 1;
-        }
-    }
-    visited.remove(from);
-    result
 }
 
 fn is_valid(grid: &Vec<Vec<u32>>, from: &Position, to: &Position) -> bool {
