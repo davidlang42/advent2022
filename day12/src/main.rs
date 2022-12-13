@@ -1,6 +1,6 @@
 use std::env;
 use std::fs;
-use pathfinding::prelude::astar;
+use pathfinding::prelude::bfs;
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone)]
 struct Position {
@@ -9,12 +9,8 @@ struct Position {
 }
 
 impl Position {
-    fn distance(&self, other: &Self) -> u32 {
-        (self.row.abs_diff(other.row) + self.col.abs_diff(other.col)) as u32
-    }
-  
-    fn successors(&self, grid: &Vec<Vec<u32>>, max: &Position) -> Vec<(Self, u32)> {
-        connections(&max, self).iter().filter(|c| is_valid(&grid, self, c)).map(|v| (*v, 1)).collect()
+    fn successors(&self, grid: &Vec<Vec<u32>>, max: &Position) -> Vec<Self> {
+        connections(&max, self).into_iter().filter(|c| is_valid(&grid, self, c)).collect()
     }
 }
 
@@ -30,13 +26,12 @@ fn main() {
         grid[start.row][start.col] = 'a' as u32;
         grid[finish.row][finish.col] = 'z' as u32;
         let max = Position { row: grid.len() - 1, col: grid[0].len() - 1 };
-        let (_path, length) = astar(
+        let path = bfs(
             &start,
             |p| p.successors(&grid, &max),
-            |p| p.distance(&finish) / 3,
             |p| *p == finish
         ).unwrap();
-        println!("Shortest path: {}", length);
+        println!("Shortest path: {}", path.len() - 1);
     } else {
         println!("Please provide 1 argument: Filename");
     }
