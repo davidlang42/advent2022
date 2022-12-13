@@ -14,17 +14,23 @@ fn main() {
         let filename = &args[1];
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
-        let pairs: Vec<Vec<Item>> = text.split("\r\n\r\n").map(|pair| pair.split("\r\n").map(|line| line.parse().unwrap()).collect()).collect();
+        let mut pairs: Vec<Vec<Item>> = text.split("\r\n\r\n").map(|pair| pair.split("\r\n").map(|line| line.parse().unwrap()).collect()).collect();
         let mut sum = 0;
-        for (i, pair) in pairs.iter().enumerate() {
+        let mut packets: Vec<Item> = vec!["[[2]]".parse().unwrap(), "[[6]]".parse().unwrap()];
+        for (i, pair) in pairs.iter_mut().enumerate() {
             if pair.len() != 2 {
                 panic!("Pair should contain exactly 2");
             }
             if pair[0].cmp(&pair[1]) == Ordering::Less {
                 sum += i + 1;
             }
+            packets.append(pair);
         }
         println!("Sum of pair indicies in correct order: {}", sum);
+        packets.sort();
+        let i1 = packets.iter().position(|p| *p == "[[2]]".parse().unwrap()).unwrap() + 1;
+        let i2 = packets.iter().position(|p| *p == "[[6]]".parse().unwrap()).unwrap() + 1;
+        println!("Indicies: {} * {} = {}", i1, i2, i1*i2);
     } else {
         println!("Please provide 1 argument: Filename");
     }
