@@ -8,6 +8,8 @@ struct Position {
     col: usize
 }
 
+const NL: &str = "\n";
+
 impl Position {
     fn successors(&self, grid: &Vec<Vec<u32>>, max: &Position) -> Vec<Self> {
         connections(&max, self).into_iter().filter(|c| is_valid(&grid, self, c)).collect()
@@ -22,7 +24,7 @@ fn main() {
             .expect(&format!("Error reading from {}", filename));
         let start: Position = find_marker(&text, "S");
         let finish: Position = find_marker(&text, "E");
-        let mut grid: Vec<Vec<u32>> = text.split("\r\n").map(|s| s.chars().map(|c| c as u32).collect()).collect();
+        let mut grid: Vec<Vec<u32>> = text.split(NL).map(|s| s.chars().map(|c| c as u32).collect()).collect();
         grid[start.row][start.col] = 'a' as u32;
         grid[finish.row][finish.col] = 'z' as u32;
         let max = Position { row: grid.len() - 1, col: grid[0].len() - 1 };
@@ -38,7 +40,7 @@ fn main() {
 }
 
 fn find_marker(text: &str, marker: &str) -> Position {
-    let lines: Vec<&str> = text.split("\r\n").collect();
+    let lines: Vec<&str> = text.split(NL).collect();
     for (row, line) in lines.iter().enumerate() {
         if let Some(col) = line.find(marker) {
             return Position { row, col };
@@ -50,7 +52,7 @@ fn find_marker(text: &str, marker: &str) -> Position {
 fn is_valid(grid: &Vec<Vec<u32>>, from: &Position, to: &Position) -> bool {
     let from_value = grid[from.row][from.col];
     let to_value = grid[to.row][to.col];
-    from_value == to_value || from_value + 1 == to_value
+    to_value <= from_value + 1
 }
 
 fn connections(max: &Position, from: &Position) -> Vec<Position> {
