@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
 use std::str::FromStr;
+use core::cmp::Ordering;
 
 enum Item {
     Int(isize),
@@ -19,7 +20,7 @@ fn main() {
             if pair.len() != 2 {
                 panic!("Pair should contain exactly 2");
             }
-            if compare(&pair[0], &pair[1]) < 0 {
+            if pair[0].cmp(&pair[1]) == Ordering::Less {
                 sum += i + 1;
             }
         }
@@ -69,24 +70,37 @@ fn split_by_comma(line: &str) -> Vec<String> {
     strings
 }
 
-// a < b => -
-// a == b => 0
-// a > b => +
-fn compare(a: &Item, b: &Item) -> isize {
-    match (a,b) {
-        (Item::Int(a_int), Item::Int(b_int)) => a_int - b_int,
-        (Item::List(a_list), Item::List(b_list)) => {
-            let mut i = 0;
-            while i < a_list.len() && i < b_list.len() {
-                let result = compare(&a_list[i], &b_list[i]);
-                if result != 0 {
-                    return result;
+impl Ord for Item {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self,other) {
+            (Item::Int(a_int), Item::Int(b_int)) => a_int.cmp(b_int),
+            (Item::List(a_list), Item::List(b_list)) => {
+                let mut i = 0;
+                while i < a_list.len() && i < b_list.len() {
+                    let result = a_list[i].cmp(&b_list[i]);
+                    if result != Ordering::Equal {
+                        return result;
+                    }
+                    i += 1;
                 }
-                i += 1;
-            }
-            (a_list.len() as isize) - (b_list.len() as isize)
-        },
-        (Item::Int(a_int), Item::List(_)) => compare(&Item::List(vec![Item::Int(*a_int)]), b),
-        (Item::List(_), Item::Int(b_int)) => compare(a, &Item::List(vec![Item::Int(*b_int)]))
+                a_list.len().cmp(&b_list.len())
+            },
+            (Item::Int(a_int), Item::List(_)) => Item::List(vec![Item::Int(*a_int)]).cmp(other),
+            (Item::List(_), Item::Int(b_int)) => self.cmp(&Item::List(vec![Item::Int(*b_int)]))
+        }
     }
 }
+
+impl PartialOrd for Item {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Item {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+}
+
+impl Eq for Item {}
