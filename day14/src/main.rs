@@ -28,18 +28,31 @@ fn main() {
             .expect(&format!("Error reading from {}", filename));
         let paths: Vec<Path> = text.split(NL).map(|s| s.parse().unwrap()).collect();
         let mut grid: HashMap<Point,Fill> = HashMap::new();
-        for path in paths {
+        for path in &paths {
             path.draw_rock(&mut grid);
         }
         println!("Initial rocks: {}", grid.len());
-        let lowest_rock = grid.iter().map(|(p, f)| p.down).max().unwrap();
+        let lowest_rock = grid.iter().map(|(p, _)| p.down).max().unwrap();
         println!("Lowest rock: {}", lowest_rock);
         let start = Point { right: 500, down: 0 };
         let mut sand_count = 0;
         while let Some(_) = fall_sand(&mut grid, start, Some(lowest_rock), None) {
             sand_count += 1;
         }
-        println!("Number of sand: {}", sand_count);
+        println!("Number of sand (no floor): {}", sand_count);
+        grid = HashMap::new();
+        for path in &paths {
+            path.draw_rock(&mut grid);
+        }
+        sand_count = 0;
+        let floor = lowest_rock + 2;
+        while let Some(last) = fall_sand(&mut grid, start, None, Some(floor)) {
+            sand_count += 1;
+            if last == start {
+                break;
+            }
+        }
+        println!("Number of sand (floor {}): {}", floor, sand_count);
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -94,8 +107,9 @@ fn fall_sand(grid: &mut HashMap<Point, Fill>, p: Point, lowest_rock: Option<usiz
         None => {}
     };
     match floor_level {
-        Some(floor) => if p.down == floor {
+        Some(floor) => if p.down == floor - 1 {
             // on the floor
+            grid.insert(p, Fill::Sand);
             return Some(p);
         },
         None => {}
