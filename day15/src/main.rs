@@ -1,7 +1,6 @@
 use std::env;
 use std::fs;
 use std::str::FromStr;
-use std::collections::HashMap;
 
 #[derive(Eq, Hash, PartialEq, Clone, Copy)]
 struct Point {
@@ -11,13 +10,10 @@ struct Point {
 
 struct Sensor {
     position: Point,
-    beacon: Point
-}
-
-enum Fill {
-    Beacon,
-    Sensor,
-    NoBeacon
+    beacon: Point,
+    search_distance: isize,
+    search_min: Point,
+    search_max: Point
 }
 
 fn main() {
@@ -44,7 +40,9 @@ fn main() {
         x_min = 0;
         x_max = y_max;
         for x in x_min..(x_max+1) {
-            println!("Searching row {}", x);
+            if x % 100 == 0 {
+                println!("Searching row {}", x);
+            }
             for y in y_min..(y_max+1) {
                 let p = Point { x, y };
                 if might_be_beacon(&p, &sensors) {
@@ -65,9 +63,21 @@ impl FromStr for Sensor {
         if segments.len() != 2 {
             panic!("Must have 2 segments");
         }
+        let position: Point = segments[0][10..].parse().unwrap(); //Sensor at x=2, y=18
+        let beacon: Point = segments[1][21..].parse().unwrap(); //closest beacon is at x=-2, y=15
+        let search_distance = distance(&position, &beacon);
         Ok(Sensor {
-            position: segments[0][10..].parse().unwrap(), //Sensor at x=2, y=18
-            beacon: segments[1][21..].parse().unwrap(), //closest beacon is at x=-2, y=15
+            position,
+            beacon,
+            search_distance,
+            search_min: Point {
+                x: position.x - search_distance,
+                y: position.y - search_distance
+            },
+            search_max: Point {
+                x: position.x + search_distance,
+                y: position.y + search_distance
+            }
         })
     }
 }
@@ -88,35 +98,22 @@ impl FromStr for Point {
     }
 }
 
-fn add_to_grid(grid: &mut HashMap<Point,Fill>, sensor: &Sensor) {
-    grid.insert(sensor.position, Fill::Sensor); //overwrite
-    grid.insert(sensor.beacon, Fill::Beacon); //overwrite
-    let max = distance(&sensor.position, &sensor.beacon);
-    for x in (sensor.position.x-max)..(sensor.position.x+max) {
-        for y in (sensor.position.y-max)..(sensor.position.y+max) {
-            let p = Point { x, y };
-            if distance(&p, &sensor.position) <= max && !grid.contains_key(&p) {
-                grid.insert(p, Fill::NoBeacon); //no overwrite
-            }
-        }
-    }
-}
-
 fn distance(a: &Point, b: &Point) -> isize {
     (a.x.abs_diff(b.x) + a.y.abs_diff(b.y)).try_into().unwrap()
 }
 
 fn might_be_beacon(p: &Point, sensors: &Vec<Sensor>) -> bool {
     for s in sensors {
-        if *p == s.position {
-            return false; // definitely a sensor, which is not a beacon
-        }
-        if *p == s.beacon {
-            return true; // definitely a beacon
-        }
-        let max = distance(&s.position, &s.beacon);
-        if distance(&p, &s.position) <= max {
-            return false; // definitely not a beacon, but might still be another sensor
+        if p.x <= s.search_max.x && p.x >= s.search_min.x && p.y <= s.search_max.y && p.y >= s.search_min.y {
+            if *p == s.position {
+                return false; // definitely a sensor, which is not a beacon
+            }
+            if *p == s.beacon {
+                return true; // definitely a beacon
+            }
+            if distance(&p, &s.position) <= s.search_distance {
+                return false; // definitely not a beacon, but might still be another sensor
+            }
         }
     }
     return true; // position not scanned, might be beacon
