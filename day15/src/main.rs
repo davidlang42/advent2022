@@ -28,8 +28,8 @@ fn main() {
             .expect(&format!("Error reading from {}", filename));
         let sensors: Vec<Sensor> = text.split("\r\n").map(|s| s.parse().unwrap()).collect();
         let y_search = 2000000;
-        let x_min = sensors.iter().map(|s| s.position.x - distance(&s.position, &s.beacon)).min().unwrap();
-        let x_max = sensors.iter().map(|s| s.position.x + distance(&s.position, &s.beacon)).max().unwrap();
+        let mut x_min = sensors.iter().map(|s| s.position.x - distance(&s.position, &s.beacon)).min().unwrap();
+        let mut x_max = sensors.iter().map(|s| s.position.x + distance(&s.position, &s.beacon)).max().unwrap();
         let mut not_beacons = 0;
         for x in x_min..(x_max+1) {
             let p = Point { x, y: y_search };
@@ -38,6 +38,20 @@ fn main() {
             }
         }
         println!("At y={}, {} cannot be beacons", y_search, not_beacons);
+
+        let y_min = 0;
+        let y_max = 4000000;
+        x_min = 0;
+        x_max = y_max;
+        for x in x_min..(x_max+1) {
+            println!("Searching row {}", x);
+            for y in y_min..(y_max+1) {
+                let p = Point { x, y };
+                if might_be_beacon(&p, &sensors) {
+                    println!("Possible beacon: ({},{}), with tuning freq: {}", p.x, p.y, p.x*4000000+p.y);
+                }
+            }
+        }
     } else {
         println!("Please provide 1 argument: Filename");
     }
