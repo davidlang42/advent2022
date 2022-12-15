@@ -27,28 +27,17 @@ fn main() {
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
         let sensors: Vec<Sensor> = text.split("\r\n").map(|s| s.parse().unwrap()).collect();
-        let mut grid: HashMap<Point,Fill> = HashMap::new();
-        for (i, sensor) in sensors.iter().enumerate() {
-            println!("Sensor {}", i);
-            add_to_grid(&mut grid, &sensor);
-        }
         let y_search = 2000000;
-        let not_beacons = grid.iter().filter(|(p, f)| p.y == y_search && match f {
-            Fill::Beacon => false,
-            Fill::Sensor => true,
-            Fill::NoBeacon => true
-        }).count();
+        let x_min = sensors.iter().map(|s| s.position.x - distance(&s.position, &s.beacon)).min().unwrap();
+        let x_max = sensors.iter().map(|s| s.position.x + distance(&s.position, &s.beacon)).max().unwrap();
+        let mut not_beacons = 0;
+        for x in x_min..(x_max+1) {
+            let p = Point { x, y: y_search };
+            if !might_be_beacon(&p, &sensors) {
+                not_beacons += 1;
+            }
+        }
         println!("At y={}, {} cannot be beacons", y_search, not_beacons);
-        // let mut line: Vec<char> = Vec::new();
-        // for x in -4..27 {
-        //     line.push(match grid.get(&Point { x, y: y_search }) {
-        //         Some(Fill::Beacon) => 'B',
-        //         Some(Fill::NoBeacon) => '#',
-        //         Some(Fill::Sensor) => 'S',
-        //         None => '.'
-        //     });
-        // }
-        // println!("Line {}: {}", y_search, line.iter().collect::<String>());
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -101,4 +90,20 @@ fn add_to_grid(grid: &mut HashMap<Point,Fill>, sensor: &Sensor) {
 
 fn distance(a: &Point, b: &Point) -> isize {
     (a.x.abs_diff(b.x) + a.y.abs_diff(b.y)).try_into().unwrap()
+}
+
+fn might_be_beacon(p: &Point, sensors: &Vec<Sensor>) -> bool {
+    for s in sensors {
+        if *p == s.position {
+            return false; // definitely a sensor, which is not a beacon
+        }
+        if *p == s.beacon {
+            return true; // definitely a beacon
+        }
+        let max = distance(&s.position, &s.beacon);
+        if distance(&p, &s.position) <= max {
+            return false; // definitely not a beacon, but might still be another sensor
+        }
+    }
+    return true; // position not scanned, might be beacon
 }
