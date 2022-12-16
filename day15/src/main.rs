@@ -18,7 +18,7 @@ struct Sensor {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() == 2 {
+    if args.len() == 4 {
         let filename = &args[1];
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
@@ -37,21 +37,28 @@ fn main() {
 
         let y_min = 0;
         let y_max = 4000000;
-        x_min = 0;
-        x_max = y_max;
+        x_min = args[2].parse().unwrap();
+        x_max = args[3].parse().unwrap();
+        let mut found: Vec<String> = Vec::new();
         for x in x_min..(x_max+1) {
             if x % 100 == 0 {
-                println!("Searching row {}", x);
+                println!("Progress {}/{} ({}%)", x, x_max, x/x_max*100);
+                for f in &found {
+                    println!("{}", f);
+                }
             }
             for y in y_min..(y_max+1) {
                 let p = Point { x, y };
                 if might_be_beacon(&p, &sensors) {
-                    println!("Possible beacon: ({},{}), with tuning freq: {}", p.x, p.y, p.x*4000000+p.y);
+                    found.push(format!("Possible beacon: ({},{}), with tuning freq: {}", p.x, p.y, p.x*4000000+p.y));
                 }
             }
         }
+        for f in &found {
+            println!("{}", f);
+        }
     } else {
-        println!("Please provide 1 argument: Filename");
+        println!("Please provide 3 arguments: Filename, x-min, x-max");
     }
 }
 
