@@ -2,10 +2,10 @@ use std::env;
 use std::fs;
 use std::collections::HashMap;
 
-struct Valve<'a> {
+struct Valve {
     name: String,
     rate: usize,
-    tunnels: Vec<&'a Valve<'a>>
+    tunnels: Vec<String>
 }
 
 const NL: &str = "\n";
@@ -22,35 +22,11 @@ fn main() {
             let first: Vec<&str> = sections[0].split(" ").collect();
             let name = first[1].to_string();
             let rate = first[4].split("=").skip(1).next().unwrap().parse().unwrap();
-            let mut valve = match valves.get_mut(&name) {
-                Some(existing) => existing,
-                None => {
-                    let mut new = Valve { name: name.clone(), rate: 0, tunnels: Vec::new() };
-                    valves.insert(name.clone(), new);
-                    valves.get_mut(&name).unwrap()
-                }
-            };
-            valve.rate = rate;
-            let tunnels: Vec<&str> = sections[1].split(" ").skip(4).collect();
-            for tunnel in tunnels {
-                let tunnel_name = tunnel[0..2].to_string();
-                let tunnel_valve = match valves.get(&tunnel_name) {
-                    Some(existing) => existing,
-                    None => {
-                        let mut new = Valve { name: tunnel_name.clone(), rate: 0, tunnels: Vec::new() };
-                        valves.insert(tunnel_name.clone(), new);
-                        valves.get(&tunnel_name).unwrap()
-                    }
-                };
-                valve.tunnels.push(&tunnel_valve);
-            }
+            let tunnels: Vec<String> = sections[1].split(" ").skip(4).map(|s| s[0..2].to_string()).collect();
+            let mut valve = Valve { name: name.clone(), rate, tunnels };
+            valves.insert(name, valve);
         }
         
-        // let path_from_a = bfs(
-        //     &finish,
-        //     |p| p.successors(&grid, &max),
-        //     |p| grid[p.row][p.col] == 'a' as u32
-        // ).unwrap();
         println!("Valves: {}", valves.len());
     } else {
         println!("Please provide 1 argument: Filename");
