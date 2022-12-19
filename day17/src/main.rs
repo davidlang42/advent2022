@@ -24,7 +24,7 @@ enum Direction {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() == 2 {
+    if args.len() == 3 {
         let filename = &args[1];
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
@@ -65,13 +65,16 @@ fn main() {
         let mut jets: VecDeque<Direction> = text.chars().map(|c| parse_char(c)).collect();
         let mut chamber: HashSet<Point> = HashSet::new();
         let width = 7;
-        let max = 2022;
+        let max: usize =  args[2].parse().unwrap();
         for i in 0..max {
+            if i % 1000 == 0 {
+                println!("{}/{}", i, max);
+            }
             add_rock(&mut chamber, width, &rocks[i % rocks.len()], &mut jets);
         }
         println!("Chamber height after {} rocks: {}", max, measure_height(&chamber));
     } else {
-        println!("Please provide 1 argument: Filename");
+        println!("Please provide 2 arguments: Filename, Max height");
     }
 }
 
