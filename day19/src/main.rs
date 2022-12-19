@@ -39,21 +39,22 @@ enum Robot {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() == 3 {
+    if args.len() == 4 {
         let filename = &args[1];
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
         let blueprints: Vec<Blueprint> = text.split("\r\n").map(|s| s.parse().unwrap()).collect();
+        let minutes: usize = args[3].parse().unwrap();
         if let Ok(bp_index) = args[2].parse::<usize>() {
-            println!("Starting Blueprint {}", bp_index);
-            let final_state = max_geodes(&blueprints[bp_index-1], State::new());
+            println!("Starting Blueprint {} for {} minutes", bp_index, minutes);
+            let final_state = max_geodes(&blueprints[bp_index-1], State::new(minutes));
             let quality = bp_index * final_state.geodes;
             println!("Blueprint {} makes {} geodes with a quality of {}", bp_index, final_state.geodes, quality);
         } else {
             let mut sum = 0;
             for (i, bp) in blueprints.iter().enumerate() {
-                println!("Starting Blueprint {}", i+1);
-                let final_state = max_geodes(bp, State::new());
+                println!("Starting Blueprint {} for {} minutes", i+1, minutes);
+                let final_state = max_geodes(bp, State::new(minutes));
                 let quality = (i+1) * final_state.geodes;
                 sum += quality;
                 println!("Blueprint {} makes {} geodes with a quality of {}", i+1, final_state.geodes, quality);
@@ -61,7 +62,7 @@ fn main() {
             println!("Sum: {}", sum);
         }
     } else {
-        println!("Please provide 2 arguments: Filename, Blueprint number");
+        println!("Please provide 2 arguments: Filename, Blueprint number, Minutes");
     }
 }
 
@@ -87,9 +88,9 @@ impl FromStr for Blueprint {
 }
 
 impl State {
-    fn new() -> Self {
+    fn new(minutes: usize) -> Self {
         State {
-            minutes_remaining: 24,
+            minutes_remaining: minutes,
             ore: 0,
             ore_robots: 1,
             clay: 0,
