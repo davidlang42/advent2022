@@ -2,7 +2,7 @@ use std::env;
 use std::fs;
 use std::cmp;
 use std::collections::HashSet;
-use std::collections::VecDeque;
+use std::collections::HashMap;
 
 #[derive(Eq, Hash, PartialEq, Clone, Copy)]
 struct Point {
@@ -68,16 +68,32 @@ fn main() {
         let max: usize =  args[2].parse().unwrap();
         let mut r = 0;
         let mut j = 0;
+        let mut clean_floors: HashMap<(usize, usize),usize> = HashMap::new(); // Mapping (rock index, jet index) to the index of last time a clean floor occurred with these parameters
         for i in 0..max {
             if i % 1000 == 0 {
                 println!("{}/{}", i, max);
             }
-            add_rock(&mut chamber, width, &rocks, &mut r, &jets, &mut j);
+            let height = add_rock(&mut chamber, width, &rocks, &mut r, &jets, &mut j);
+            if full_row(&chamber, width, height) {
+                println!("Full row at {}", i);
+                if let Some(existing) = clean_floors.insert((r,j),i) {
+                    println!("Pattern found between rows {} and {}", existing, i);
+                }
+            }
         }
         println!("Chamber height after {} rocks: {}", max, measure_height(&chamber));
     } else {
         println!("Please provide 2 arguments: Filename, Max height");
     }
+}
+
+fn full_row(chamber: &HashSet<Point>, width: isize, up: isize) -> bool {
+    for right in 0..width {
+        if chamber.get(&Point { right, up }) == None {
+            return false;
+        }
+    }
+    true
 }
 
 fn parse_char(c: char) -> Direction {
@@ -132,13 +148,14 @@ impl Point {
     }
 }
 
-fn add_rock(chamber: &mut HashSet<Point>, width: isize, rocks: &Vec<Rock>, r: &mut usize, jets: &Vec<Direction>, j: &mut usize) {
+fn add_rock(chamber: &mut HashSet<Point>, width: isize, rocks: &Vec<Rock>, r: &mut usize, jets: &Vec<Direction>, j: &mut usize) -> isize {
     let mut rock = rocks[*r].clone();
     *r += 1;
     if *r == rocks.len() {
         *r = 0;
     }
-    rock.position = Point { right: 2, up: measure_height(chamber) + 4 };
+    let mut max_up = measure_height(chamber);
+    rock.position = Point { right: 2, up: max_up + 4 };
     //println!("{}", draw_chamber(chamber, &rock.absolute(), width).join("\r\n"));
     loop {
         let right_delta = match jets[*j] {
@@ -163,15 +180,19 @@ fn add_rock(chamber: &mut HashSet<Point>, width: isize, rocks: &Vec<Rock>, r: &m
     }
     for p in rock.absolute() {
         chamber.insert(p);
+        if p.up > max_up {
+            max_up = p.up;
+        }
     }
     //println!("{}", draw_chamber(chamber, &HashSet::new(), width).join("\r\n"));
+    max_up
 }
 
 fn measure_height(chamber: &HashSet<Point>) -> isize {
     chamber.iter().map(|p| p.up).max().unwrap_or(0)
 }
 
-fn draw_line(chamber: &HashSet<Point>, rock: &HashSet<Point>, up: isize, width: isize) -> String {
+fn _draw_line(chamber: &HashSet<Point>, rock: &HashSet<Point>, up: isize, width: isize) -> String {
     let mut line = Vec::new();
     for right in 0..width {
         let p = Point { right, up };
@@ -192,9 +213,9 @@ fn _draw_chamber(chamber: &HashSet<Point>, rock: &HashSet<Point>, width: isize) 
     let mut lines = Vec::new();
     for u in (0..height+1).rev() {
         if u == 0 {
-            lines.push(format!("{}: +{}+", u, draw_line(chamber, rock, u, width)));
+            lines.push(format!("{}: +{}+", u, _draw_line(chamber, rock, u, width)));
         } else {
-            lines.push(format!("{}: |{}|", u, draw_line(chamber, rock, u, width)));
+            lines.push(format!("{}: |{}|", u, _draw_line(chamber, rock, u, width)));
         }
     }
     lines
