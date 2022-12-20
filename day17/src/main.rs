@@ -62,15 +62,17 @@ fn main() {
                 Point::new(1,1),
             ])
         ];
-        let mut jets: VecDeque<Direction> = text.chars().map(|c| parse_char(c)).collect();
+        let jets: Vec<Direction> = text.chars().map(|c| parse_char(c)).collect();
         let mut chamber: HashSet<Point> = HashSet::new();
         let width = 7;
         let max: usize =  args[2].parse().unwrap();
+        let mut r = 0;
+        let mut j = 0;
         for i in 0..max {
             if i % 1000 == 0 {
                 println!("{}/{}", i, max);
             }
-            add_rock(&mut chamber, width, &rocks[i % rocks.len()], &mut jets);
+            add_rock(&mut chamber, width, &rocks, &mut r, &jets, &mut j);
         }
         println!("Chamber height after {} rocks: {}", max, measure_height(&chamber));
     } else {
@@ -130,17 +132,23 @@ impl Point {
     }
 }
 
-fn add_rock(chamber: &mut HashSet<Point>, width: isize, rock_template: &Rock, jets: &mut VecDeque<Direction>) {
-    let mut rock = rock_template.clone();
+fn add_rock(chamber: &mut HashSet<Point>, width: isize, rocks: &Vec<Rock>, r: &mut usize, jets: &Vec<Direction>, j: &mut usize) {
+    let mut rock = rocks[*r].clone();
+    *r += 1;
+    if *r == rocks.len() {
+        *r = 0;
+    }
     rock.position = Point { right: 2, up: measure_height(chamber) + 4 };
     //println!("{}", draw_chamber(chamber, &rock.absolute(), width).join("\r\n"));
     loop {
-        let next_jet = jets.pop_front().unwrap();
-        let right_delta = match next_jet {
+        let right_delta = match jets[*j] {
             Direction::Left => -1,
             Direction::Right => 1
         };
-        jets.push_back(next_jet);
+        *j += 1;
+        if *j == jets.len() {
+            *j = 0;
+        }
         rock.position.right += right_delta;
         if rock.out_of_bounds(width) || rock.absolute().intersection(chamber).count() > 0 {
             rock.position.right -= right_delta;
@@ -179,7 +187,7 @@ fn draw_line(chamber: &HashSet<Point>, rock: &HashSet<Point>, up: isize, width: 
     line.iter().collect()
 }
 
-fn draw_chamber(chamber: &HashSet<Point>, rock: &HashSet<Point>, width: isize) -> Vec<String> {
+fn _draw_chamber(chamber: &HashSet<Point>, rock: &HashSet<Point>, width: isize) -> Vec<String> {
     let height = cmp::max(measure_height(chamber), measure_height(rock));
     let mut lines = Vec::new();
     for u in (0..height+1).rev() {
