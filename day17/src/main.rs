@@ -78,8 +78,15 @@ fn main() {
             let height = add_rock(&mut chamber, width, floor, &rocks, &mut r, &jets, &mut j);
             if full_row(&chamber, width, height) {
                 println!("Full row at {}", i);
+                floor = height;
                 if let Some((existing_i, existing_height)) = clean_floors.insert((r, j), (i, height)) {
                     println!("Pattern found between rows {}({}) and {}({})", existing_i, existing_height, i, height);
+                    let delta_i = i - existing_i;
+                    let delta_height = height - existing_height;
+                    while i + delta_i < max {
+                        i += delta_i;
+                        floor += delta_height;
+                    }
                 }
             }
             i += 1;
@@ -157,7 +164,7 @@ fn add_rock(chamber: &mut HashSet<Point>, width: isize, floor: isize, rocks: &Ve
     if *r == rocks.len() {
         *r = 0;
     }
-    let mut max_up = measure_height(chamber);
+    let mut max_up = cmp::max(measure_height(chamber), floor);
     rock.position = Point { right: 2, up: max_up + 4 };
     //println!("{}", draw_chamber(chamber, &rock.absolute(), width).join("\r\n"));
     loop {
