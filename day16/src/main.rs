@@ -64,7 +64,12 @@ fn best_simulation(valves: &HashMap<String, Valve>, current: &str, unopened: &Ha
             let mut next_unopened = unopened.clone();
             next_unopened.remove(next_key);
             let next_remaining = remaining - time_to_move_and_open;
-            this_option = next_remaining * next_valve.rate + best_simulation(valves, next_key, &next_unopened, next_remaining);
+            let this_release = next_remaining * next_valve.rate;
+            if this_release + best_case(valves, &next_unopened, next_remaining) <= best_option {
+                this_option = 0; // don't bother
+            } else {
+                this_option = this_release + best_simulation(valves, next_key, &next_unopened, next_remaining);
+            }
         }
         if this_option > best_option {
             best_option = this_option;
@@ -77,20 +82,20 @@ fn shortest_distance(valves: &HashMap<String, Valve>, from: &str, to: &str) -> u
     bfs(&from.to_string(), |name| valves.get(name).unwrap().tunnels.clone(), |p| *p == *to).unwrap().len() - 1
 }
 
-// fn best_case(valves: &HashMap<String, Valve>, unopened: &HashSet<String>, minutes: usize) -> usize {
-//     if minutes < 2 {
-//         return 0;
-//     }
-//     let mut remaining = minutes;
-//     let mut sum = 0;
-//     let mut unopened_rates: Vec<usize> = unopened.iter().map(|u| valves.get(u).unwrap().rate).collect();
-//     unopened_rates.sort();
-//     for r in unopened_rates.iter().rev() {
-//         remaining -= 2; // best case is 1min to move then 1min to open
-//         sum += r * remaining;
-//         if remaining < 2 {
-//             break;
-//         }
-//     }
-//     sum
-// }
+fn best_case(valves: &HashMap<String, Valve>, unopened: &HashSet<String>, minutes: usize) -> usize {
+    if minutes < 2 {
+        return 0;
+    }
+    let mut remaining = minutes;
+    let mut sum = 0;
+    let mut unopened_rates: Vec<usize> = unopened.iter().map(|u| valves.get(u).unwrap().rate).collect();
+    unopened_rates.sort();
+    for r in unopened_rates.iter().rev() {
+        remaining -= 2; // best case is 1min to move then 1min to open
+        sum += r * remaining;
+        if remaining < 2 {
+            break;
+        }
+    }
+    sum
+}
