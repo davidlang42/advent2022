@@ -68,18 +68,21 @@ fn main() {
         let max: usize =  args[2].parse().unwrap();
         let mut r = 0;
         let mut j = 0;
-        let mut clean_floors: HashMap<(usize, usize),usize> = HashMap::new(); // Mapping (rock index, jet index) to the index of last time a clean floor occurred with these parameters
-        for i in 0..max {
+        let mut clean_floors: HashMap<(usize, usize),(usize, isize)> = HashMap::new(); // Mapping (rock index, jet index) to the (rock number, chamber height) of last time a clean floor occurred with these parameters
+        let mut floor = 0;
+        let mut i = 0;
+        while i < max {
             if i % 1000 == 0 {
                 println!("{}/{}", i, max);
             }
-            let height = add_rock(&mut chamber, width, &rocks, &mut r, &jets, &mut j);
+            let height = add_rock(&mut chamber, width, floor, &rocks, &mut r, &jets, &mut j);
             if full_row(&chamber, width, height) {
                 println!("Full row at {}", i);
-                if let Some(existing) = clean_floors.insert((r,j),i) {
-                    println!("Pattern found between rows {} and {}", existing, i);
+                if let Some((existing_i, existing_height)) = clean_floors.insert((r, j), (i, height)) {
+                    println!("Pattern found between rows {}({}) and {}({})", existing_i, existing_height, i, height);
                 }
             }
+            i += 1;
         }
         println!("Chamber height after {} rocks: {}", max, measure_height(&chamber));
     } else {
@@ -137,8 +140,8 @@ impl Rock {
         abs
     }
 
-    fn out_of_bounds(&self, width: isize) -> bool {
-        self.position.right < 0 || self.position.right + self.size.right > width || self.position.up <= 0
+    fn out_of_bounds(&self, width: isize, floor: isize) -> bool {
+        self.position.right < 0 || self.position.right + self.size.right > width || self.position.up <= floor
     }
 }
 
@@ -148,7 +151,7 @@ impl Point {
     }
 }
 
-fn add_rock(chamber: &mut HashSet<Point>, width: isize, rocks: &Vec<Rock>, r: &mut usize, jets: &Vec<Direction>, j: &mut usize) -> isize {
+fn add_rock(chamber: &mut HashSet<Point>, width: isize, floor: isize, rocks: &Vec<Rock>, r: &mut usize, jets: &Vec<Direction>, j: &mut usize) -> isize {
     let mut rock = rocks[*r].clone();
     *r += 1;
     if *r == rocks.len() {
@@ -167,12 +170,12 @@ fn add_rock(chamber: &mut HashSet<Point>, width: isize, rocks: &Vec<Rock>, r: &m
             *j = 0;
         }
         rock.position.right += right_delta;
-        if rock.out_of_bounds(width) || rock.absolute().intersection(chamber).count() > 0 {
+        if rock.out_of_bounds(width, floor) || rock.absolute().intersection(chamber).count() > 0 {
             rock.position.right -= right_delta;
         }
         //println!("{}", draw_chamber(chamber, &rock.absolute(), width).join("\r\n"));
         rock.position.up -= 1;
-        if rock.out_of_bounds(width) || rock.absolute().intersection(chamber).count() > 0 {
+        if rock.out_of_bounds(width, floor) || rock.absolute().intersection(chamber).count() > 0 {
             rock.position.up += 1;
             break;
         }
