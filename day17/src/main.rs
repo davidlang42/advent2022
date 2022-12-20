@@ -65,13 +65,12 @@ fn main() {
         let mut jets: VecDeque<Direction> = text.chars().map(|c| parse_char(c)).collect();
         let mut chamber: HashSet<Point> = HashSet::new();
         let width = 7;
-        let mut floor = 0;
         let max: usize =  args[2].parse().unwrap();
         for i in 0..max {
             if i % 1000 == 0 {
                 println!("{}/{}", i, max);
             }
-            add_rock(&mut chamber, width, &rocks[i % rocks.len()], &mut jets, &mut floor);
+            add_rock(&mut chamber, width, &rocks[i % rocks.len()], &mut jets);
         }
         println!("Chamber height after {} rocks: {}", max, measure_height(&chamber));
     } else {
@@ -120,8 +119,8 @@ impl Rock {
         abs
     }
 
-    fn out_of_bounds(&self, width: isize, floor: isize) -> bool {
-        self.position.right < 0 || self.position.right + self.size.right > width || self.position.up <= floor
+    fn out_of_bounds(&self, width: isize) -> bool {
+        self.position.right < 0 || self.position.right + self.size.right > width || self.position.up <= 0
     }
 }
 
@@ -131,9 +130,8 @@ impl Point {
     }
 }
 
-fn add_rock(chamber: &mut HashSet<Point>, width: isize, rock_template: &Rock, jets: &mut VecDeque<Direction>, floor: &mut isize) {
+fn add_rock(chamber: &mut HashSet<Point>, width: isize, rock_template: &Rock, jets: &mut VecDeque<Direction>) {
     let mut rock = rock_template.clone();
-    let mut potential_floor = rock.position.up;
     rock.position = Point { right: 2, up: measure_height(chamber) + 4 };
     //println!("{}", draw_chamber(chamber, &rock.absolute(), width).join("\r\n"));
     loop {
@@ -144,43 +142,28 @@ fn add_rock(chamber: &mut HashSet<Point>, width: isize, rock_template: &Rock, je
         };
         jets.push_back(next_jet);
         rock.position.right += right_delta;
-        if rock.out_of_bounds(width, *floor) || rock.absolute().intersection(chamber).count() > 0 {
+        if rock.out_of_bounds(width) || rock.absolute().intersection(chamber).count() > 0 {
             rock.position.right -= right_delta;
         }
         //println!("{}", draw_chamber(chamber, &rock.absolute(), width).join("\r\n"));
         rock.position.up -= 1;
-        if rock.out_of_bounds(width, *floor) || rock.absolute().intersection(chamber).count() > 0 {
+        if rock.out_of_bounds(width) || rock.absolute().intersection(chamber).count() > 0 {
             rock.position.up += 1;
             break;
         }
         //println!("{}", draw_chamber(chamber, &rock.absolute(), width).join("\r\n"));
     }
     for p in rock.absolute() {
-        if p.up < potential_floor {
-            potential_floor = p.up;
-        }
         chamber.insert(p);
     }
-    if full_row(chamber, width, potential_floor) {
-        println!("Raise the floor to {}", potential_floor);
-    }
     //println!("{}", draw_chamber(chamber, &HashSet::new(), width).join("\r\n"));
-}
-
-fn full_row(chamber: &HashSet<Point>, width: isize, up: isize) -> bool {
-    for right in 0..width {
-        if chamber.get(&Point { right, up }) == None {
-            return false;
-        }
-    }
-    true
 }
 
 fn measure_height(chamber: &HashSet<Point>) -> isize {
     chamber.iter().map(|p| p.up).max().unwrap_or(0)
 }
 
-fn _draw_line(chamber: &HashSet<Point>, rock: &HashSet<Point>, up: isize, width: isize) -> String {
+fn draw_line(chamber: &HashSet<Point>, rock: &HashSet<Point>, up: isize, width: isize) -> String {
     let mut line = Vec::new();
     for right in 0..width {
         let p = Point { right, up };
@@ -196,14 +179,14 @@ fn _draw_line(chamber: &HashSet<Point>, rock: &HashSet<Point>, up: isize, width:
     line.iter().collect()
 }
 
-fn _draw_chamber(chamber: &HashSet<Point>, rock: &HashSet<Point>, width: isize) -> Vec<String> {
+fn draw_chamber(chamber: &HashSet<Point>, rock: &HashSet<Point>, width: isize) -> Vec<String> {
     let height = cmp::max(measure_height(chamber), measure_height(rock));
     let mut lines = Vec::new();
     for u in (0..height+1).rev() {
         if u == 0 {
-            lines.push(format!("{}: +{}+", u, _draw_line(chamber, rock, u, width)));
+            lines.push(format!("{}: +{}+", u, draw_line(chamber, rock, u, width)));
         } else {
-            lines.push(format!("{}: |{}|", u, _draw_line(chamber, rock, u, width)));
+            lines.push(format!("{}: |{}|", u, draw_line(chamber, rock, u, width)));
         }
     }
     lines
