@@ -3,6 +3,7 @@ use std::fs;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use pathfinding::prelude::bfs;
+use itertools::Itertools;
 
 struct Valve {
     name: String,
@@ -32,7 +33,17 @@ fn main() {
         let useful: HashSet<String> = valves.values().filter(|v| v.rate > 0).map(|v| v.name.clone()).collect();
         println!("Useful: {}", useful.len());
         let best = best_simulation(&valves, "AA", &useful, 30);
-        println!("Best: {}", best);
+        println!("Part1 Best: {}", best);
+        let mut best_total = 0;
+        for half in useful.clone().into_iter().combinations(useful.len() / 2) {
+            let me = half.into_iter().collect();
+            let elephant: HashSet<String> = useful.difference(&me).map(|s| s.to_string()).collect();
+            let total = best_simulation(&valves, "AA", &me, 26) + best_simulation(&valves, "AA", &elephant, 26);
+            if total > best_total {
+                best_total = total;
+            }
+        }
+        println!("Part2 Best: {}", best_total);
     } else {
         println!("Please provide 1 argument: Filename");
     }
