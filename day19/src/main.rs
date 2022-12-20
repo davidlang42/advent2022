@@ -1,7 +1,6 @@
 use std::env;
 use std::fs;
 use std::str::FromStr;
-use std::collections::HashSet;
 
 struct Blueprint {
     ore_per_ore_robot: usize,
@@ -25,7 +24,6 @@ struct State {
     geode_robots: usize
 }
 
-#[derive(Eq, PartialEq, Hash)]
 enum Robot {
     Ore,
     Clay,
@@ -101,20 +99,20 @@ impl State {
 
 fn max_geodes(bp: &Blueprint, initial_state: State) -> State {
     let mut state = initial_state;
-    let mut options: HashSet<Option<Robot>> = HashSet::new();
+    let mut options: Vec<Option<Robot>> = Vec::new();
     if state.ore >= bp.ore_per_geode_robot && state.obsidian >= bp.obsidian_per_geode_robot {
-        options.insert(Some(Robot::Geode));
+        options.push(Some(Robot::Geode));
     }
     if state.ore >= bp.ore_per_obsidian_robot && state.clay >= bp.clay_per_obsidian_robot {
-        options.insert(Some(Robot::Obsidian));
+        options.push(Some(Robot::Obsidian));
     }
     if state.ore >= bp.ore_per_clay_robot {
-        options.insert(Some(Robot::Clay));
+        options.push(Some(Robot::Clay));
     }
     if state.ore >= bp.ore_per_ore_robot {
-        options.insert(Some(Robot::Ore));
+        options.push(Some(Robot::Ore));
     }
-    options.insert(None);
+    options.push(None);
     state.ore += state.ore_robots;
     state.clay += state.clay_robots;
     state.obsidian += state.obsidian_robots;
@@ -125,8 +123,7 @@ fn max_geodes(bp: &Blueprint, initial_state: State) -> State {
         state
     } else {
         let mut best = State::new(1);
-        while options.len() != 0 {
-            let option = best_option_heuristic(&mut options, &state, bp);
+        for option in &options {
             let mut new_state = state;
             if let Some(new_robot) = option {
                 match new_robot {
@@ -171,40 +168,4 @@ fn best_possible_geodes(state: &State) -> usize {
 fn sum_of_ints_up_to(n: usize) -> usize {
     // ie. triangular numbers
     n*(n+1)/2
-}
-
-fn best_option_heuristic(options: &mut HashSet<Option<Robot>>, state: &State, bp: &Blueprint) -> Option<Robot> {
-    if options.remove(&Some(Robot::Geode)) {
-        return Some(Robot::Geode);
-    }
-    if (state.ore_robots as f64) / (bp.ore_per_geode_robot as f64) < (state.obsidian_robots as f64) / (bp.obsidian_per_geode_robot as f64) {
-        if options.remove(&Some(Robot::Ore)) {
-            return Some(Robot::Ore);
-        } else if options.remove(&None) {
-            return None;
-        }
-    } else if options.remove(&Some(Robot::Obsidian)) {
-        return Some(Robot::Obsidian);
-    }
-    if (state.clay_robots as f64) / (bp.clay_per_obsidian_robot as f64) < (state.ore_robots as f64) / (bp.ore_per_obsidian_robot as f64) {
-        if options.remove(&Some(Robot::Clay)) {
-            return Some(Robot::Clay);
-        } else if options.remove(&Some(Robot::Ore)) {
-            return Some(Robot::Ore);
-        } else if options.remove(&None) {
-            return None;
-        }
-    } else if options.remove(&Some(Robot::Ore)) {
-        return Some(Robot::Ore);
-    } else if options.remove(&None) {
-        return None;
-    }
-    // otherwise do whatever we have
-    if options.remove(&Some(Robot::Obsidian)) {
-        return Some(Robot::Obsidian);
-    }
-    if options.remove(&Some(Robot::Clay)) {
-        return Some(Robot::Clay);
-    }
-    panic!("wtf");
 }
