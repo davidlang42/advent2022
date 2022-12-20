@@ -32,13 +32,14 @@ fn main() {
         println!("Valves: {}", valves.len());
         let useful: HashSet<String> = valves.values().filter(|v| v.rate > 0).map(|v| v.name.clone()).collect();
         println!("Useful: {}", useful.len());
-        let best = best_simulation(&valves, "AA", &useful, 30);
+        let mut cache: HashMap<(String, String),usize> = HashMap::new();
+        let best = best_simulation(&valves, "AA", &useful, 30, &mut cache);
         println!("Part1 Best: {}", best);
         let mut best_total = 0;
         for half in useful.clone().into_iter().combinations(useful.len() / 2) {
             let me = half.into_iter().collect();
             let elephant: HashSet<String> = useful.difference(&me).map(|s| s.to_string()).collect();
-            let total = best_simulation(&valves, "AA", &me, 26) + best_simulation(&valves, "AA", &elephant, 26);
+            let total = best_simulation(&valves, "AA", &me, 26, &mut cache) + best_simulation(&valves, "AA", &elephant, 26, &mut cache);
             if total > best_total {
                 best_total = total;
             }
@@ -49,14 +50,14 @@ fn main() {
     }
 }
 
-fn best_simulation(valves: &HashMap<String, Valve>, current: &str, unopened: &HashSet<String>, remaining: usize) -> usize {
+fn best_simulation(valves: &HashMap<String, Valve>, current: &str, unopened: &HashSet<String>, remaining: usize, cache: &mut HashMap<(String, String),usize>) -> usize {
     if remaining == 0 || unopened.len() == 0 {
         return 0;
     }
     let mut best_option = 0;
     for next_key in unopened {
         let next_valve = valves.get(next_key).unwrap();
-        let time_to_move_and_open = shortest_distance(valves, current, next_key) + 1;
+        let time_to_move_and_open = shortest_distance(valves, current, next_key, cache) + 1;
         let this_option: usize;
         if time_to_move_and_open > remaining {
             this_option = 0;
@@ -68,7 +69,7 @@ fn best_simulation(valves: &HashMap<String, Valve>, current: &str, unopened: &Ha
             if this_release + best_case(valves, &next_unopened, next_remaining) <= best_option {
                 this_option = 0; // don't bother
             } else {
-                this_option = this_release + best_simulation(valves, next_key, &next_unopened, next_remaining);
+                this_option = this_release + best_simulation(valves, next_key, &next_unopened, next_remaining, cache);
             }
         }
         if this_option > best_option {
@@ -78,8 +79,15 @@ fn best_simulation(valves: &HashMap<String, Valve>, current: &str, unopened: &Ha
     best_option
 }
 
-fn shortest_distance(valves: &HashMap<String, Valve>, from: &str, to: &str) -> usize {
-    bfs(&from.to_string(), |name| valves.get(name).unwrap().tunnels.clone(), |p| *p == *to).unwrap().len() - 1
+fn shortest_distance(valves: &HashMap<String, Valve>, from: &str, to: &str, cache: &mut HashMap<(String, String),usize>) -> usize {
+    let key = (from.to_string(), to.to_string());
+    if let Some(previous) = cache.get(&key) {
+        *previous
+    } else {
+        let result = bfs(&key.0, |name| valves.get(name).unwrap().tunnels.clone(), |p| *p == *to).unwrap().len() - 1;
+        cache.insert(key, result);
+        result
+    }
 }
 
 fn best_case(valves: &HashMap<String, Valve>, unopened: &HashSet<String>, minutes: usize) -> usize {
