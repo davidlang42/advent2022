@@ -11,15 +11,26 @@ enum Expression {
     Division(String, String)
 }
 
+const NL: &str = "\n";
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() == 2 {
         let filename = &args[1];
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
-        let expressions: HashMap<String, Expression> = text.split("\r\n").map(|s| parse_expression(s)).collect();
+        let mut expressions: HashMap<String, Expression> = text.split(NL).map(|s| parse_expression(s)).collect();
         println!("Expressions: {}", expressions.len());
         println!("Root value: {}", expressions["root"].calculate(&expressions));
+        // part2
+        expressions.insert("root".to_string(), match &expressions["root"] {
+            Expression::Literal(_) => panic!("Root should have been an operation"),
+            Expression::Product(a, b) => Expression::Difference(a.to_string(), b.to_string()),
+            Expression::Sum(a, b) => Expression::Difference(a.to_string(), b.to_string()),
+            Expression::Difference(a, b) => Expression::Difference(a.to_string(), b.to_string()),
+            Expression::Division(a, b) => Expression::Difference(a.to_string(), b.to_string())
+        });
+        println!("My value: {}", expressions["root"].goal_find(0, &expressions, "humn"));
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -65,6 +76,86 @@ impl Expression {
             Expression::Sum(a, b) => other_expressions[a].calculate(other_expressions) + other_expressions[b].calculate(other_expressions),
             Expression::Difference(a, b) => other_expressions[a].calculate(other_expressions) - other_expressions[b].calculate(other_expressions),
             Expression::Division(a, b) => other_expressions[a].calculate(other_expressions) / other_expressions[b].calculate(other_expressions)
+        }
+    }
+
+    fn calculate_without(&self, other_expressions: &HashMap<String, Expression>, excluding: &str) -> Option<isize> {
+        match self {
+            Expression::Literal(l) => Some(*l),
+            Expression::Product(a, b) => {
+                if excluding == *a || excluding == *b {
+                    None
+                } else {
+                    Some(other_expressions[a].calculate(other_expressions) * other_expressions[b].calculate(other_expressions))
+                }
+            },
+            Expression::Sum(a, b) => {
+                if excluding == *a || excluding == *b {
+                    None
+                } else {
+                    Some(other_expressions[a].calculate(other_expressions) + other_expressions[b].calculate(other_expressions))
+                }
+            },
+            Expression::Difference(a, b) => {
+                if excluding == *a || excluding == *b {
+                    None
+                } else {
+                    Some(other_expressions[a].calculate(other_expressions) - other_expressions[b].calculate(other_expressions))
+                }
+            },
+            Expression::Division(a, b) => {
+                if excluding == *a || excluding == *b {
+                    None
+                } else {
+                    Some(other_expressions[a].calculate(other_expressions) / other_expressions[b].calculate(other_expressions))
+                }
+            },
+        }
+    }
+
+    fn goal_find(&self, goal: isize, expressions: &HashMap<String, Expression>, find_value_of: &str) -> isize {
+        match self {
+            Expression::Literal(l) => *l,
+            Expression::Product(a, b) => {
+                let a_value = expressions[a].calculate_without(expressions, find_value_of);
+                let b_value = expressions[b].calculate_without(expressions, find_value_of);
+                match (a_value, b_value) {
+                    (Some(_), Some(_)) => panic!("Can't find a goal when both sides are literal"),
+                    (Some(a_literal), None) => expressions[b].goal_find(goal / a_literal, expressions, find_value_of),
+                    (None, Some(b_literal)) => expressions[a].goal_find(goal / b_literal, expressions, find_value_of),
+                    (None, None) => panic!("Can't find a goal when both sides are variable")
+                }
+            },
+            Expression::Sum(a, b) => {
+                let a_value = expressions[a].calculate_without(expressions, find_value_of);
+                let b_value = expressions[b].calculate_without(expressions, find_value_of);
+                match (a_value, b_value) {
+                    (Some(_), Some(_)) => panic!("Can't find a goal when both sides are literal"),
+                    (Some(a_literal), None) => expressions[b].goal_find(goal - a_literal, expressions, find_value_of),
+                    (None, Some(b_literal)) => expressions[a].goal_find(goal - b_literal, expressions, find_value_of),
+                    (None, None) => panic!("Can't find a goal when both sides are variable")
+                }
+            },
+            Expression::Difference(a, b) => {
+                let a_value = expressions[a].calculate_without(expressions, find_value_of);
+                let b_value = expressions[b].calculate_without(expressions, find_value_of);
+                match (a_value, b_value) {
+                    (Some(_), Some(_)) => panic!("Can't find a goal when both sides are literal"),
+                    (Some(a_literal), None) => expressions[b].goal_find(a_literal - goal, expressions, find_value_of),
+                    (None, Some(b_literal)) => expressions[a].goal_find(goal + b_literal, expressions, find_value_of),
+                    (None, None) => panic!("Can't find a goal when both sides are variable")
+                }
+            },
+            Expression::Division(a, b) => {
+                let a_value = expressions[a].calculate_without(expressions, find_value_of);
+                let b_value = expressions[b].calculate_without(expressions, find_value_of);
+                match (a_value, b_value) {
+                    (Some(_), Some(_)) => panic!("Can't find a goal when both sides are literal"),
+                    (Some(a_literal), None) => expressions[b].goal_find(goal * a_literal, expressions, find_value_of),
+                    (None, Some(b_literal)) => expressions[a].goal_find(goal * b_literal, expressions, find_value_of),
+                    (None, None) => panic!("Can't find a goal when both sides are variable")
+                }
+            }
         }
     }
 }
