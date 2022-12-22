@@ -151,11 +151,12 @@ impl Assignment {
                 Expression::Algebra(a, op, b) => {
                     let a_value = assignments[a].calculate_without(assignments, find_value_of);
                     let b_value = assignments[b].calculate_without(assignments, find_value_of);
-                    match (a_value, b_value) {
-                        (Some(_), Some(_)) => panic!("Can't find a goal when both sides are literal: {}, {}", a, b),
-                        (Some(a_literal), None) => assignments[b].goal_find(op.inverse().run(goal, a_literal), assignments, find_value_of), // when op=diff, might need: (Some(a_literal), None) => expressions[b].goal_find(b, a_literal - goal, expressions, find_value_of),
-                        (None, Some(b_literal)) => assignments[a].goal_find(op.inverse().run(goal, b_literal), assignments, find_value_of),
-                        (None, None) => panic!("Can't find a goal when both sides are variable: {}, {}", a, b)
+                    match (a_value, b_value, op) {
+                        (Some(_), Some(_), _) => panic!("Can't find a goal when both sides are literal: {}, {}", a, b),
+                        (Some(a_literal), None, Operation::Difference) => assignments[b].goal_find(a_literal - goal, assignments, find_value_of), // special case because a-x=goal rearranges to x=a-goal
+                        (Some(a_literal), None, _) => assignments[b].goal_find(op.inverse().run(goal, a_literal), assignments, find_value_of),
+                        (None, Some(b_literal), _) => assignments[a].goal_find(op.inverse().run(goal, b_literal), assignments, find_value_of),
+                        (None, None, _) => panic!("Can't find a goal when both sides are variable: {}, {}", a, b)
                     }
                 }
             }
