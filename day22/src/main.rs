@@ -7,7 +7,7 @@ struct Position {
     facing: Direction
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum Direction {
     Right,
     Down,
@@ -52,11 +52,18 @@ fn main() {
         println!("Instructions: {}", instructions.len());
         //part1
         let mut pos = find_starting_position(&grid);
-        for instruction in instructions {
+        for instruction in &instructions {
             instruction.process(&mut pos, &grid, WrapType::Flat);
         }
-        println!("Final position: {},{} facing {:?}", pos.row, pos.column, pos.facing);
-        println!("Password: {}", 1000 * (pos.row + 1) + 4 * (pos.column + 1) + pos.facing.value());
+        println!("Part1 Final position: {},{} facing {:?}", pos.row, pos.column, pos.facing);
+        println!("Part1 Password: {}", 1000 * (pos.row + 1) + 4 * (pos.column + 1) + pos.facing.value());
+        //part2
+        let mut pos = find_starting_position(&grid);
+        for instruction in &instructions {
+            instruction.process(&mut pos, &grid, WrapType::Cube);
+        }
+        println!("Part2 Final position: {},{} facing {:?}", pos.row, pos.column, pos.facing);
+        println!("Part2 Password: {}", 1000 * (pos.row + 1) + 4 * (pos.column + 1) + pos.facing.value());
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -164,12 +171,10 @@ impl Instruction {
             Instruction::TurnLeft => position.facing = position.facing.left(),
             Instruction::TurnRight => position.facing = position.facing.right(),
             Instruction::Move(max) => {
-                let (dr, dc) = position.facing.move_delta();
                 for _ in 0..*max {
-                    let (new_r, new_c) = wrap_type.wrap_position(&position, &grid, dr, dc);
-                    if grid[new_r][new_c] == Tile::Open {
-                        position.row = new_r;
-                        position.column = new_c;
+                    let new_pos = wrap_type.wrap_position(&position, &grid);
+                    if grid[new_pos.row][new_pos.column] == Tile::Open {
+                        *position = new_pos;
                     } else { // blocked
                         break;
                     }
@@ -180,25 +185,83 @@ impl Instruction {
 }
 
 impl WrapType {
-    fn wrap_position(&self, position: &Position, grid: &Vec<Vec<Tile>>, dr: isize, dc: isize) -> (usize, usize) {
+    fn wrap_position(&self, position: &Position, grid: &Vec<Vec<Tile>>) -> Position {
+        let (mut dr, mut dc) = position.facing.move_delta();
         let mut r = position.row as isize + dr;
         let mut c = position.column as isize + dc;
-        loop {
-            if r < 0 {
-                r = (grid.len() - 1) as isize;
-            } else if c < 0 {
-                c = (grid[0].len() - 1) as isize;
-            } else if r as usize == grid.len() {
-                r = 0;
-            } else if c as usize == grid[0].len() {
-                c = 0;
-            } else if grid[r as usize][c as usize] == Tile::None {
-                r += dr;
-                c += dc;
-            } else {
-                break;
+        let mut f = position.facing;
+        let height = grid.len() as isize;
+        let width = grid[0].len() as isize;
+        let cube = height / 4;
+        if cube != width / 3 {
+            panic!("Not a cube");
+        }
+        match self {
+            WrapType::Flat => {
+                loop {
+                    if r < 0 {
+                        r = height - 1;
+                    } else if c < 0 {
+                        c = width - 1;
+                    } else if r == height {
+                        r = 0;
+                    } else if c == width {
+                        c = 0;
+                    } else if grid[r as usize][c as usize] == Tile::None {
+                        r += dr;
+                        c += dc;
+                    } else {
+                        break;
+                    }
+                }
+            },
+            WrapType::Cube => {
+                loop {
+                    if r < 0 && f == Direction::Up {
+                        // 1 -> 2
+                        r = cube;
+                        c = cube - (c - 2 * cube) - 1;
+                        f = Direction::Down;
+                    } else if c < 0 && f == Direction::Left {
+                        // 2 -> 6
+                        c = 4 * cube - (r - cube) - 1;
+                        r = 3 * cube - 1;
+                        f = Direction::Up;
+                    } else if r == height && f == Direction::Down {
+                        if c < 3 * cube {
+                            // 5 -> 2
+                        } else {
+                            // 6 -> 2
+                        }
+                    } else if c == width && f == Direction::Right {
+                        // 6 -> 1
+                    } else if grid[r as usize][c as usize] == Tile::None {
+                        match f {
+                            Direction::Right => {
+                                // 1 -> 6
+                                // 4 -> 6
+                            },
+                            Direction::Down => {
+                                // 2 -> 5
+                                // 3 -> 5
+                            },
+                            Direction::Left => {
+                                // 1 -> 3
+                                // 5 -> 3
+                            },
+                            Direction::Up => {
+                                // 6 -> 4
+                                // 3 -> 1
+                                // 2 -> 1
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                    //TODO re-calc dr/dc
+                }
             }
         }
-        (r as usize, c as usize)
+        Position { row: r as usize, column: c as usize, facing: f }
     }
 }
