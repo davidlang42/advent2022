@@ -33,14 +33,14 @@ fn main() {
         }
         println!("Root value: {}", assignments["root"].calculate(&assignments));
         // part2
-        // expressions.insert("root".to_string(), match &expressions["root"] {
-        //     Expression::Literal(_) => panic!("Root should have been an operation"),
-        //     Expression::Product(a, b) => Expression::Difference(a.to_string(), b.to_string()),
-        //     Expression::Sum(a, b) => Expression::Difference(a.to_string(), b.to_string()),
-        //     Expression::Difference(a, b) => Expression::Difference(a.to_string(), b.to_string()),
-        //     Expression::Division(a, b) => Expression::Difference(a.to_string(), b.to_string())
-        // });
-        // println!("My value: {}", expressions["root"].goal_find("root", 0, &expressions, "humn"));
+        assignments.insert("root".to_string(), match &assignments["root"].expression {
+            Expression::Literal(_) => panic!("Root should have been an operation"),
+            Expression::Algebra(a, _, b) => Assignment {
+                name: "root".to_string(),
+                expression: Expression::Algebra(a.to_string(), Operation::Difference, b.to_string())
+            }
+        });
+        println!("My value: {}", assignments["root"].goal_find(0, &assignments, "humn"));
     } else {
         println!("Please provide 1 argument: Filename");
     }
@@ -95,105 +95,70 @@ impl FromStr for Assignment {
     }
 }
 
+impl Operation {
+    fn run(&self, a: isize, b: isize) -> isize{
+        match self {
+            Operation::Product => a * b,
+            Operation::Sum => a + b,
+            Operation::Difference => a - b,
+            Operation::Division => a / b
+        }
+    }
+
+    fn inverse(&self) -> Operation {
+        match self {
+            Operation::Product => Operation::Division,
+            Operation::Sum => Operation::Difference,
+            Operation::Difference => Operation::Sum,
+            Operation::Division => Operation::Product
+        }
+    }
+}
+
 impl Assignment {
     fn calculate(&self, assignments: &HashMap<String, Assignment>) -> isize {
         match &self.expression {
             Expression::Literal(l) => *l,
             Expression::Algebra(a, op, b) => {
-                match op {
-                    Operation::Product => assignments[a].calculate(assignments) * assignments[b].calculate(assignments),
-                    Operation::Sum => assignments[a].calculate(assignments) + assignments[b].calculate(assignments),
-                    Operation::Difference => assignments[a].calculate(assignments) - assignments[b].calculate(assignments),
-                    Operation::Division => assignments[a].calculate(assignments) / assignments[b].calculate(assignments)
-                }
+                let a_value = assignments[a].calculate(assignments);
+                let b_value = assignments[b].calculate(assignments);
+                op.run(a_value, b_value)
             }
         }
     }
 
-    // fn calculate_without(&self, other_expressions: &HashMap<String, Expression>, excluding: &str) -> Option<isize> {
-    //     match self {
-    //         Expression::Literal(l) => Some(*l),
-    //         Expression::Product(a, b) => {
-    //             println!("Calc {},{} without {}", a, b, excluding);
-    //             if excluding == *a || excluding == *b {
-    //                 None
-    //             } else {
-    //                 Some(other_expressions[a].calculate_without(other_expressions, excluding)? * other_expressions[b].calculate_without(other_expressions, excluding)?)
-    //             }
-    //         },
-    //         Expression::Sum(a, b) => {
-    //             println!("Calc {},{} without {}", a, b, excluding);
-    //             if excluding == *a || excluding == *b {
-    //                 None
-    //             } else {
-    //                 Some(other_expressions[a].calculate_without(other_expressions, excluding)? + other_expressions[b].calculate_without(other_expressions, excluding)?)
-    //             }
-    //         },
-    //         Expression::Difference(a, b) => {
-    //             println!("Calc {},{} without {}", a, b, excluding);
-    //             if excluding == *a || excluding == *b {
-    //                 None
-    //             } else {
-    //                 Some(other_expressions[a].calculate_without(other_expressions, excluding)? - other_expressions[b].calculate_without(other_expressions, excluding)?)
-    //             }
-    //         },
-    //         Expression::Division(a, b) => {
-    //             println!("Calc {},{} without {}", a, b, excluding);
-    //             if excluding == *a || excluding == *b {
-    //                 None
-    //             } else {
-    //                 Some(other_expressions[a].calculate_without(other_expressions, excluding)? / other_expressions[b].calculate_without(other_expressions, excluding)?)
-    //             }
-    //         },
-    //     }
-    // }
+    fn calculate_without(&self, assignments: &HashMap<String, Assignment>, excluding: &str) -> Option<isize> {
+        if self.name == *excluding {
+            None
+        } else {
+            Some(match &self.expression {
+                Expression::Literal(l) => *l,
+                Expression::Algebra(a, op, b) => {
+                    let a_value = assignments[a].calculate_without(assignments, excluding)?;
+                    let b_value = assignments[b].calculate_without(assignments, excluding)?;
+                    op.run(a_value, b_value)
+                }
+            })
+        }
+    }
 
-    // fn goal_find(&self, my_name: &str, goal: isize, expressions: &HashMap<String, Expression>, find_value_of: &str) -> isize {
-    //     if *my_name == *find_value_of {
-    //         return goal;
-    //     }
-    //     match self {
-    //         Expression::Literal(l) => *l,
-    //         Expression::Product(a, b) => {
-    //             let a_value = expressions[a].calculate_without(expressions, find_value_of);
-    //             let b_value = expressions[b].calculate_without(expressions, find_value_of);
-    //             match (a_value, b_value) {
-    //                 (Some(_), Some(_)) => panic!("Can't find a goal when both sides are literal: {}, {}", a, b),
-    //                 (Some(a_literal), None) => expressions[b].goal_find(b, goal / a_literal, expressions, find_value_of),
-    //                 (None, Some(b_literal)) => expressions[a].goal_find(a, goal / b_literal, expressions, find_value_of),
-    //                 (None, None) => panic!("Can't find a goal when both sides are variable: {}, {}", a, b)
-    //             }
-    //         },
-    //         Expression::Sum(a, b) => {
-    //             let a_value = expressions[a].calculate_without(expressions, find_value_of);
-    //             let b_value = expressions[b].calculate_without(expressions, find_value_of);
-    //             match (a_value, b_value) {
-    //                 (Some(_), Some(_)) => panic!("Can't find a goal when both sides are literal: {}, {}", a, b),
-    //                 (Some(a_literal), None) => expressions[b].goal_find(b, goal - a_literal, expressions, find_value_of),
-    //                 (None, Some(b_literal)) => expressions[a].goal_find(a, goal - b_literal, expressions, find_value_of),
-    //                 (None, None) => panic!("Can't find a goal when both sides are variable: {}, {}", a, b)
-    //             }
-    //         },
-    //         Expression::Difference(a, b) => {
-    //             let a_value = expressions[a].calculate_without(expressions, find_value_of);
-    //             let b_value = expressions[b].calculate_without(expressions, find_value_of);
-    //             match (a_value, b_value) {
-    //                 (Some(_), Some(_)) => panic!("Can't find a goal when both sides are literal: {}, {}", a, b),
-    //                 (Some(a_literal), None) => expressions[b].goal_find(b, a_literal - goal, expressions, find_value_of),
-    //                 (None, Some(b_literal)) => expressions[a].goal_find(a, goal + b_literal, expressions, find_value_of),
-    //                 (None, None) => panic!("Can't find a goal when both sides are variable: {}, {}", a, b)
-    //             }
-    //         },
-    //         Expression::Division(a, b) => {
-    //             let a_value = expressions[a].calculate_without(expressions, find_value_of);
-    //             let b_value = expressions[b].calculate_without(expressions, find_value_of);
-    //             match (a_value, b_value) {
-    //                 (Some(_), Some(_)) => panic!("Can't find a goal when both sides are literal: {}, {}", a, b),
-    //                 (Some(a_literal), None) => expressions[b].goal_find(b, goal * a_literal, expressions, find_value_of),
-    //                 (None, Some(b_literal)) => expressions[a].goal_find(a, goal * b_literal, expressions, find_value_of),
-    //                 (None, None) => panic!("Can't find a goal when both sides are variable: {}, {}", a, b)
-    //             }
-    //         }
-    //     }
-    // }
+    fn goal_find(&self, goal: isize, assignments: &HashMap<String, Assignment>, find_value_of: &str) -> isize {
+        if self.name == *find_value_of {
+            goal
+        } else {
+            match &self.expression {
+                Expression::Literal(_) => panic!("Can't find a goal when '{}' is a literal", self.name),
+                Expression::Algebra(a, op, b) => {
+                    let a_value = assignments[a].calculate_without(assignments, find_value_of);
+                    let b_value = assignments[b].calculate_without(assignments, find_value_of);
+                    match (a_value, b_value) {
+                        (Some(_), Some(_)) => panic!("Can't find a goal when both sides are literal: {}, {}", a, b),
+                        (Some(a_literal), None) => assignments[b].goal_find(op.inverse().run(goal, a_literal), assignments, find_value_of), // when op=diff, might need: (Some(a_literal), None) => expressions[b].goal_find(b, a_literal - goal, expressions, find_value_of),
+                        (None, Some(b_literal)) => assignments[a].goal_find(op.inverse().run(goal, b_literal), assignments, find_value_of),
+                        (None, None) => panic!("Can't find a goal when both sides are variable: {}, {}", a, b)
+                    }
+                }
+            }
+        }
+    }
 }
