@@ -28,6 +28,11 @@ enum Tile {
     Blocked
 }
 
+enum WrapType {
+    Flat,
+    Cube
+}
+
 const NL: &str = "\r\n";
 const NLNL: &str = "\r\n\r\n";
 
@@ -45,9 +50,10 @@ fn main() {
         let instructions = parse_instructions(sections[1]);
         println!("Grid: {}x{}", grid.len(), grid[0].len());
         println!("Instructions: {}", instructions.len());
+        //part1
         let mut pos = find_starting_position(&grid);
         for instruction in instructions {
-            instruction.process(&mut pos, &grid);
+            instruction.process(&mut pos, &grid, WrapType::Flat);
         }
         println!("Final position: {},{} facing {:?}", pos.row, pos.column, pos.facing);
         println!("Password: {}", 1000 * (pos.row + 1) + 4 * (pos.column + 1) + pos.facing.value());
@@ -153,39 +159,46 @@ impl Direction {
 }
 
 impl Instruction {
-    fn process(&self, position: &mut Position, grid: &Vec<Vec<Tile>>) {
+    fn process(&self, position: &mut Position, grid: &Vec<Vec<Tile>>, wrap_type: WrapType) {
         match self {
             Instruction::TurnLeft => position.facing = position.facing.left(),
             Instruction::TurnRight => position.facing = position.facing.right(),
             Instruction::Move(max) => {
                 let (dr, dc) = position.facing.move_delta();
                 for _ in 0..*max {
-                    let mut r = position.row as isize + dr;
-                    let mut c = position.column as isize + dc;
-                    loop {
-                        if r < 0 {
-                            r = (grid.len() - 1) as isize;
-                        } else if c < 0 {
-                            c = (grid[0].len() - 1) as isize;
-                        } else if r as usize == grid.len() {
-                            r = 0;
-                        } else if c as usize == grid[0].len() {
-                            c = 0;
-                        } else if grid[r as usize][c as usize] == Tile::None {
-                            r += dr;
-                            c += dc;
-                        } else {
-                            break;
-                        }
-                    }
-                    if grid[r as usize][c as usize] == Tile::Open {
-                        position.row = r as usize;
-                        position.column = c as usize;
+                    let (new_r, new_c) = wrap_type.wrap_position(&position, &grid, dr, dc);
+                    if grid[new_r][new_c] == Tile::Open {
+                        position.row = new_r;
+                        position.column = new_c;
                     } else { // blocked
                         break;
                     }
                 }
             }
         }
+    }
+}
+
+impl WrapType {
+    fn wrap_position(&self, position: &Position, grid: &Vec<Vec<Tile>>, dr: isize, dc: isize) -> (usize, usize) {
+        let mut r = position.row as isize + dr;
+        let mut c = position.column as isize + dc;
+        loop {
+            if r < 0 {
+                r = (grid.len() - 1) as isize;
+            } else if c < 0 {
+                c = (grid[0].len() - 1) as isize;
+            } else if r as usize == grid.len() {
+                r = 0;
+            } else if c as usize == grid[0].len() {
+                c = 0;
+            } else if grid[r as usize][c as usize] == Tile::None {
+                r += dr;
+                c += dc;
+            } else {
+                break;
+            }
+        }
+        (r as usize, c as usize)
     }
 }
