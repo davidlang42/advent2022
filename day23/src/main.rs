@@ -28,7 +28,7 @@ fn main() {
         let mut elves = load_elves(&text);
         let mut next_direction = Direction::North;
         let mut change: bool;
-        let rounds = 10;
+        let rounds = 2;
         println!("Before:");
         _display_grid(&elves);
         println!("");
@@ -113,6 +113,7 @@ impl Direction {
 
 fn process_round(old: &HashSet<Point>, direction: &mut Direction) -> (HashSet<Point>, bool) {
     let mut moves: HashMap<Point, Point> = HashMap::new(); // key: new point, value: old point
+    let mut conflicts: HashSet<Point> = HashSet::new();
     let mut change = false;
     for old_p in old {
         if clear_all_sides(old, old_p) {
@@ -121,10 +122,15 @@ fn process_round(old: &HashSet<Point>, direction: &mut Direction) -> (HashSet<Po
         } else {
             change = true;
             let new_p = propose_move(old, old_p, direction);
-            println!("({},{}) proposes move to ({},{})", old_p.x, old_p.y, new_p.x, new_p.y);
-            if let Some(conflict) = moves.insert(new_p, *old_p) {
-                // neither move (there won't ever be a 3 way conflict because we check the corners when moving)
-                println!("Found conflict at ({},{}), therefore ({},{}) and ({},{}) don't move", new_p.x, new_p.y, old_p.x, old_p.y, conflict.x, conflict.y);
+            //println!("({},{}) proposes move to ({},{})", old_p.x, old_p.y, new_p.x, new_p.y);
+            if conflicts.contains(&new_p) {
+                // existing conflict, don't move this point
+                if moves.insert(*old_p, *old_p) != None {
+                    panic!("Double conflict not moving ({},{})", old_p.x, old_p.y);
+                }
+            } else if let Some(conflict) = moves.insert(new_p, *old_p) {
+                // new conflict, don't move this point, and move the conflict back as well
+                //println!("Found conflict at ({},{}), therefore ({},{}) and ({},{}) don't move", new_p.x, new_p.y, old_p.x, old_p.y, conflict.x, conflict.y);
                 if moves.remove(&new_p) == None {
                     panic!("Failed to remove conflict");
                 }
@@ -134,6 +140,7 @@ fn process_round(old: &HashSet<Point>, direction: &mut Direction) -> (HashSet<Po
                 if moves.insert(conflict, conflict) != None {
                     panic!("Double conflict not moving ({},{})", conflict.x, conflict.y);
                 }
+                conflicts.insert(new_p);
             }
         }
     }
@@ -146,13 +153,13 @@ fn propose_move(existing: &HashSet<Point>, p: &Point, first_direction: &Directio
     loop {
         let new_p = direction.forward(p);
         let (c1, c2) = direction.corners(p);
-        println!("({},{}) checks {:?}", p.x, p.y, direction);
+        //println!("({},{}) checks {:?}", p.x, p.y, direction);
         if existing.contains(&new_p) {
-            println!("No, because centre ({},{}) is taken", new_p.x, new_p.y);
+            //println!("No, because centre ({},{}) is taken", new_p.x, new_p.y);
         } else if existing.contains(&c1) {
-            println!("No, because left corner ({},{}) is taken", c1.x, c1.y);
+            //println!("No, because left corner ({},{}) is taken", c1.x, c1.y);
         } else if existing.contains(&c2) {
-            println!("No, because right corner ({},{}) is taken", c2.x, c2.y);
+            //println!("No, because right corner ({},{}) is taken", c2.x, c2.y);
         } else {
             return new_p;
         }
