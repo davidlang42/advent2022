@@ -28,7 +28,7 @@ fn main() {
         let mut elves = load_elves(&text);
         let mut next_direction = Direction::North;
         let mut change: bool;
-        let rounds = 1;
+        let rounds = 10;
         println!("Before:");
         _display_grid(&elves);
         println!("");
@@ -166,7 +166,7 @@ fn propose_move(existing: &HashSet<Point>, p: &Point, first_direction: &Directio
 
 fn clear_all_sides(existing: &HashSet<Point>, p: &Point) -> bool {
     for x in (p.x-1)..(p.x+2) {
-        for y in (p.y-1)..(p.x+2) {
+        for y in (p.y-1)..(p.y+2) {
             let check = Point { x, y };
             if *p != check && existing.contains(&check) {
                 return false;
