@@ -186,14 +186,14 @@ impl Instruction {
 
 impl WrapType {
     fn wrap_position(&self, position: &Position, grid: &Vec<Vec<Tile>>) -> Position {
-        let (mut dr, mut dc) = position.facing.move_delta();
+        let (dr, dc) = position.facing.move_delta();
         let mut r = position.row as isize + dr;
         let mut c = position.column as isize + dc;
         let mut f = position.facing;
         let height = grid.len() as isize;
         let width = grid[0].len() as isize;
-        let cube = height / 4;
-        if cube != width / 3 {
+        let cube = height / 3;
+        if cube != width / 4 {
             panic!("Not a cube");
         }
         match self {
@@ -220,45 +220,93 @@ impl WrapType {
                     if r < 0 && f == Direction::Up {
                         // 1 -> 2
                         r = cube;
-                        c = cube - (c - 2 * cube) - 1;
+                        c = 3 * cube - c - 1;
                         f = Direction::Down;
                     } else if c < 0 && f == Direction::Left {
                         // 2 -> 6
-                        c = 4 * cube - (r - cube) - 1;
+                        c = 5 * cube - r - 1;
                         r = 3 * cube - 1;
                         f = Direction::Up;
                     } else if r == height && f == Direction::Down {
                         if c < 3 * cube {
                             // 5 -> 2
+                            r = 2 * cube - 1;
+                            c = 3 * cube - c - 1;
+                            f = Direction::Up;
                         } else {
                             // 6 -> 2
+                            r = 5 * cube - c - 1;
+                            c = 0;
+                            f = Direction::Right;
                         }
                     } else if c == width && f == Direction::Right {
                         // 6 -> 1
+                        r = 3 * cube - r - 1;
+                        c = 3 * cube - 1;
+                        f = Direction::Left;
                     } else if grid[r as usize][c as usize] == Tile::None {
                         match f {
                             Direction::Right => {
-                                // 1 -> 6
-                                // 4 -> 6
+                                if r < cube {
+                                    // 1 -> 6
+                                    r = 3 * cube - r - 1;
+                                    c = 4 * cube - 1;
+                                    f = Direction::Left;
+                                } else {
+                                    // 4 -> 6
+                                    c = 5 * cube - r - 1;
+                                    r = 2 * cube;
+                                    f = Direction::Down;
+                                }
                             },
                             Direction::Down => {
-                                // 2 -> 5
-                                // 3 -> 5
+                                if c < cube {
+                                    // 2 -> 5
+                                    c = 3 * cube - c - 1;
+                                    r = 3 * cube - 1;
+                                    f = Direction::Up;
+                                } else {
+                                    // 3 -> 5
+                                    r = 4 * cube - c - 1;
+                                    c = 2 * cube;
+                                    f = Direction::Right;
+                                }
                             },
                             Direction::Left => {
-                                // 1 -> 3
-                                // 5 -> 3
+                                if r  < cube {
+                                    // 1 -> 3
+                                    c = r + cube;
+                                    r = cube;
+                                    f = Direction::Down;
+                                } else {
+                                    // 5 -> 3
+                                    c = 4 * cube - r - 1;
+                                    r = 2 * cube - 1;
+                                    f = Direction::Up;
+                                }
                             },
                             Direction::Up => {
-                                // 6 -> 4
-                                // 3 -> 1
-                                // 2 -> 1
+                                if c < cube {
+                                    // 2 -> 1
+                                    c = 3 * cube - c - 1;
+                                    r = 0;
+                                    f = Direction::Down;
+                                } else if c < 2 * cube {
+                                    // 3 -> 1
+                                    r = c - cube;
+                                    c = 2 * cube;
+                                    f = Direction::Right;
+                                } else {
+                                    // 6 -> 4
+                                    r = 5 * cube - c - 1;
+                                    c = 3 * cube - 1;
+                                    f = Direction::Left;
+                                }
                             }
                         }
                     } else {
                         break;
                     }
-                    //TODO re-calc dr/dc
                 }
             }
         }
