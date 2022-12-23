@@ -28,7 +28,7 @@ fn main() {
         let mut elves = load_elves(&text);
         let mut next_direction = Direction::North;
         let mut change: bool;
-        let rounds = 2;
+        let rounds = 10;
         println!("Before:");
         _display_grid(&elves);
         println!("");
@@ -39,7 +39,8 @@ fn main() {
                 println!("No moves required in round {}", round);
                 break;
             }
-            println!("After round {}:", round);
+            let (min, _) = find_bounds(&elves);
+            println!("After round {}: ({},{})", round, min.x, min.y);
             _display_grid(&elves);
             println!("");
         }
@@ -96,8 +97,8 @@ impl Direction {
         match self {
             Direction::North => Point { x: p.x, y: p.y - 1 },
             Direction::South => Point { x: p.x, y: p.y + 1 },
-            Direction::West => Point { x: p.x + 1, y: p.y },
-            Direction::East => Point { x: p.x - 1, y: p.y }
+            Direction::West => Point { x: p.x - 1, y: p.y },
+            Direction::East => Point { x: p.x + 1, y: p.y }
         }
     }
 
@@ -105,8 +106,8 @@ impl Direction {
         match self {
             Direction::North => (Point { x: p.x - 1, y: p.y - 1 },Point { x: p.x + 1, y: p.y - 1 }),
             Direction::South => (Point { x: p.x - 1, y: p.y + 1 },Point { x: p.x + 1, y: p.y + 1 }),
-            Direction::West => (Point { x: p.x + 1, y: p.y - 1 },Point { x: p.x + 1, y: p.y + 1 }),
-            Direction::East => (Point { x: p.x - 1, y: p.y - 1 },Point { x: p.x - 1, y: p.y + 1 })
+            Direction::West => (Point { x: p.x - 1, y: p.y - 1 },Point { x: p.x - 1, y: p.y + 1 }),
+            Direction::East => (Point { x: p.x + 1, y: p.y - 1 },Point { x: p.x + 1, y: p.y + 1 })
         }
     }
 }
@@ -125,6 +126,7 @@ fn process_round(old: &HashSet<Point>, direction: &mut Direction) -> (HashSet<Po
             //println!("({},{}) proposes move to ({},{})", old_p.x, old_p.y, new_p.x, new_p.y);
             if conflicts.contains(&new_p) {
                 // existing conflict, don't move this point
+                panic!("This really was required after all");
                 if moves.insert(*old_p, *old_p) != None {
                     panic!("Double conflict not moving ({},{})", old_p.x, old_p.y);
                 }
