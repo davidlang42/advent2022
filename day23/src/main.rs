@@ -21,14 +21,14 @@ const NL: &str = "\r\n";
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() == 2 {
+    if args.len() == 3 {
         let filename = &args[1];
         let text = fs::read_to_string(&filename)
             .expect(&format!("Error reading from {}", filename));
         let mut elves = load_elves(&text);
         let mut next_direction = Direction::North;
         let mut change: bool;
-        let rounds = 10;
+        let rounds: usize = args[2].parse().unwrap();
         println!("Before:");
         _display_grid(&elves);
         println!("");
@@ -41,13 +41,13 @@ fn main() {
             }
             let (min, _) = find_bounds(&elves);
             println!("After round {}: ({},{})", round, min.x, min.y);
-            _display_grid(&elves);
-            println!("");
+            //_display_grid(&elves);
+            //println!("");
         }
         let size = find_size(&elves);
         println!("{} in {}x{} grid with {} empty places", elves.len(), size.x, size.y, size.x*size.y-elves.len() as isize);
     } else {
-        println!("Please provide 1 argument: Filename");
+        println!("Please provide 2 arguments: Filename, Rounds");
     }
 }
 
@@ -75,7 +75,6 @@ fn load_elves(text: &str) -> HashSet<Point> {
     for (y, line) in text.split(NL).enumerate() {
         for (x, c) in line.chars().enumerate() {
             if c == '#' {
-                println!("Elf found at {},{}", x, y);
                 points.insert(Point { x: x as isize, y: y as isize });
             }
         }
@@ -126,10 +125,10 @@ fn process_round(old: &HashSet<Point>, direction: &mut Direction) -> (HashSet<Po
             //println!("({},{}) proposes move to ({},{})", old_p.x, old_p.y, new_p.x, new_p.y);
             if conflicts.contains(&new_p) {
                 // existing conflict, don't move this point
-                panic!("This really was required after all");
                 if moves.insert(*old_p, *old_p) != None {
                     panic!("Double conflict not moving ({},{})", old_p.x, old_p.y);
                 }
+                panic!("This really was required after all");
             } else if let Some(conflict) = moves.insert(new_p, *old_p) {
                 // new conflict, don't move this point, and move the conflict back as well
                 //println!("Found conflict at ({},{}), therefore ({},{}) and ({},{}) don't move", new_p.x, new_p.y, old_p.x, old_p.y, conflict.x, conflict.y);
