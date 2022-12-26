@@ -108,14 +108,14 @@ impl Position {
                 col: self.col - 1
             });
         }
-        if self.row < height {
+        if self.row < height - 1 {
             // down
             connections.push(Position {
                 row: self.row + 1,
                 col: self.col
             });
         }
-        if self.col < width {
+        if self.col < width - 1 {
             // right
             connections.push(Position {
                 row: self.row,
@@ -186,16 +186,31 @@ fn main() {
             .expect(&format!("Error reading from {}", filename));
         let grid: Grid = text.parse().unwrap();
         println!("{}x{} grid {} blizzards", grid.width, grid.height, grid.blizzards.len());
-        let path = bfs(
-            &State {
-                position: grid.start,
-                minute: 0
-            },
-            |state| state.successors(&grid),
-            |state| state.position == grid.finish
+        let mut state = State {
+            position: grid.start,
+            minute: 0
+        };
+        let mut path = bfs(
+            &state,
+            |s| s.successors(&grid),
+            |s| s.position == grid.finish
         ).unwrap();
-        println!("Path length: {}", path.len());
-        println!("Final minute: {}", path.last().unwrap().minute);
+        state = path.last().unwrap().clone();
+        println!("Minutes there: {}", state.minute);
+        path = bfs(
+            &state,
+            |s| s.successors(&grid),
+            |s| s.position == grid.start
+        ).unwrap();
+        state = path.last().unwrap().clone();
+        println!("Minutes back: {}", state.minute);
+        path = bfs(
+            &state,
+            |s| s.successors(&grid),
+            |s| s.position == grid.finish
+        ).unwrap();
+        state = path.last().unwrap().clone();
+        println!("Minutes there again: {}", state.minute);
     } else {
         println!("Please provide 1 argument: Filename");
     }
