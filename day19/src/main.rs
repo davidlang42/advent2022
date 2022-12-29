@@ -1,7 +1,9 @@
 use std::env;
 use std::fs;
 use std::str::FromStr;
+use cached::proc_macro::cached;
 
+#[derive(Hash, Eq, PartialEq, Copy, Clone)]
 struct Blueprint {
     ore_per_ore_robot: usize,
     ore_per_clay_robot: usize,
@@ -11,7 +13,7 @@ struct Blueprint {
     obsidian_per_geode_robot: usize
 }
 
-#[derive(Copy, Clone)]
+#[derive(Hash, Eq, PartialEq, Copy, Clone)]
 struct State {
     minutes_remaining: usize,
     ore: usize,
@@ -41,14 +43,14 @@ fn main() {
         let minutes: usize = args[3].parse().unwrap();
         if let Ok(bp_index) = args[2].parse::<usize>() {
             println!("Starting Blueprint {} for {} minutes", bp_index, minutes);
-            let final_state = max_geodes(&blueprints[bp_index-1], State::new(minutes));
+            let final_state = max_geodes(blueprints[bp_index-1], State::new(minutes));
             let quality = bp_index * final_state.geodes;
             println!("Blueprint {} makes {} geodes with a quality of {}", bp_index, final_state.geodes, quality);
         } else {
             let mut sum = 0;
             for (i, bp) in blueprints.iter().enumerate() {
                 println!("Starting Blueprint {} for {} minutes", i+1, minutes);
-                let final_state = max_geodes(bp, State::new(minutes));
+                let final_state = max_geodes(*bp, State::new(minutes));
                 let quality = (i+1) * final_state.geodes;
                 sum += quality;
                 println!("Blueprint {} makes {} geodes with a quality of {}", i+1, final_state.geodes, quality);
@@ -97,7 +99,8 @@ impl State {
     }
 }
 
-fn max_geodes(bp: &Blueprint, initial_state: State) -> State {
+#[cached]
+fn max_geodes(bp: Blueprint, initial_state: State) -> State {
     let mut state = initial_state;
     let mut options: Vec<Option<Robot>> = Vec::new();
     if state.ore >= bp.ore_per_geode_robot && state.obsidian >= bp.obsidian_per_geode_robot {
