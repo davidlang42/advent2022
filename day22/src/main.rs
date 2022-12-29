@@ -30,7 +30,8 @@ enum Tile {
 
 enum WrapType {
     Flat,
-    Cube
+    Cube,
+    Cube2
 }
 
 const NL: &str = "\r\n";
@@ -46,40 +47,37 @@ fn main() {
         if sections.len() != 2 {
             panic!("Expected 2 sections");
         }
-        let mut grid = parse_grid(sections[0]);
+        let grid = parse_grid(sections[0]);
         let instructions = parse_instructions(sections[1]);
         println!("Grid: {}x{}", grid.len(), grid[0].len());
         println!("Instructions: {}", instructions.len());
         //part1
         let mut pos = find_starting_position(&grid);
         for instruction in &instructions {
-            instruction.process(&mut pos, &grid, WrapType::Flat);
+            instruction.process(&mut pos, &grid, &WrapType::Flat);
         }
         println!("Part1 Final position: {},{} facing {:?}", pos.row, pos.column, pos.facing);
         println!("Part1 Password: {}", 1000 * (pos.row + 1) + 4 * (pos.column + 1) + pos.facing.value());
         //part2
-        let mut changed = false;
-        if grid.len() > grid[0].len() {
-            grid = change_grid(&grid);
-            changed = true;
-        }
-        for r in 0..grid.len() {
-            let mut line = Vec::new();
-            for c in 0..grid[0].len() {
-                line.push(match grid[r][c] {
-                    Tile::None => ' ',
-                    Tile::Open => '.',
-                    Tile::Blocked => '#'
-                });
-            }
-            println!("{}", line.iter().collect::<String>());
-        }
+        let wrap_type = if grid.len() > grid[0].len() {
+            WrapType::Cube2
+        } else {
+            WrapType::Cube
+        };
+        // for r in 0..grid.len() {
+        //     let mut line = Vec::new();
+        //     for c in 0..grid[0].len() {
+        //         line.push(match grid[r][c] {
+        //             Tile::None => ' ',
+        //             Tile::Open => '.',
+        //             Tile::Blocked => '#'
+        //         });
+        //     }
+        //     println!("{}", line.iter().collect::<String>());
+        // }
         let mut pos = find_starting_position(&grid);
         for instruction in &instructions {
-            instruction.process(&mut pos, &grid, WrapType::Cube);
-        }
-        if changed {
-            change_position(&mut pos, grid.len()/3);
+            instruction.process(&mut pos, &grid, &wrap_type);
         }
         println!("Part2 Final position: {},{} facing {:?}", pos.row, pos.column, pos.facing);
         println!("Part2 Password: {}", 1000 * (pos.row + 1) + 4 * (pos.column + 1) + pos.facing.value());
@@ -88,97 +86,7 @@ fn main() {
     }
 }
 
-fn change_grid(old: &Vec<Vec<Tile>>) -> Vec<Vec<Tile>> {
-    // change grid from:
-    //  16
-    //  4
-    // 35
-    // 2
-    // to:
-    //   1
-    // 234
-    //   56
-    // (because Eric Wastl is a dick)
-    let cube = old.len() / 4;
-    if cube != old[0].len() / 3 {
-        panic!("Not a convertable cube");
-    }
-    let mut new = Vec::new();
-    for r in 0..(3*cube) {
-        let mut row = Vec::new();
-        for _ in 0..(2*cube) {
-            row.push(Tile::None);
-        }
-        for c in (2*cube)..(3*cube) {
-            row.push(old[r][c-cube]);
-        }
-        for _ in (3*cube)..(4*cube) {
-            row.push(Tile::None);
-        }
-        new.push(row);
-    }
-    let mut face3 = extract_square(old, 2*cube, 0, cube);
-    let mut face2 = extract_square(old, 3*cube, 0, cube);
-    let mut face6 = extract_square(old, 0, 2*cube, cube);
-    face2 = rotate_square_clockwise(&face2);
-    face3 = rotate_square_clockwise(&face3);
-    face6 = rotate_square_clockwise(&rotate_square_clockwise(&face6));
-    insert_square(&mut new, cube, 0, &face2);
-    insert_square(&mut new, cube, cube, &face3);
-    insert_square(&mut new, 2*cube, 3*cube, &face6);
-    new
-}
-
-fn change_position(pos: &mut Position, cube: usize) {
-    if pos.column >= 2*cube && pos.column < 3*cube {
-        // 1,4,5
-        pos.column += cube;
-    } else if pos.row < 2*cube {
-        // 2,3
-        (pos.row, pos.column) = (4*cube - pos.column - 1, pos.row - cube);
-        pos.facing = pos.facing.left();
-    } else {
-        // 6
-        (pos.row, pos.column) = (3*cube - pos.row - 1, 6*cube - pos.column - 1);
-        pos.facing = pos.facing.left().left();
-    }
-}
-
-fn extract_square(old: &Vec<Vec<Tile>>, start_r: usize, start_c: usize, length: usize) -> Vec<Vec<Tile>> {
-    let mut new = Vec::new();
-    for r in start_r..(start_r + length) {
-        let mut row = Vec::new();
-        for c in start_c..(start_c + length) {
-            row.push(old[r][c]);
-        }
-        new.push(row);
-    }
-    new
-}
-
-fn rotate_square_clockwise(old: &Vec<Vec<Tile>>) -> Vec<Vec<Tile>> {
-    let mut new = Vec::new();
-    for c in 0..old[0].len() {
-        let mut row = Vec::new();
-        let mut r = old.len();
-        while r > 0 {
-            r -= 1;
-            row.push(old[r][c]);
-        }
-        new.push(row);
-    }
-    new
-}
-
-fn insert_square(grid: &mut Vec<Vec<Tile>>, start_r: usize, start_c: usize, insert: &Vec<Vec<Tile>>) {
-    for r in 0..insert.len() {
-        for c in 0..insert[0].len() {
-            grid[start_r+r][start_c+c] = insert[r][c];
-        }
-    }
-}
-
-fn parse_grid(text: &str) -> Vec<Vec<Tile>> {//TODO handle max line length
+fn parse_grid(text: &str) -> Vec<Vec<Tile>> {
     let mut grid = Vec::new();
     let mut max_length = 0;
     for line in text.split(NL) {
@@ -275,7 +183,7 @@ impl Direction {
 }
 
 impl Instruction {
-    fn process(&self, position: &mut Position, grid: &Vec<Vec<Tile>>, wrap_type: WrapType) {
+    fn process(&self, position: &mut Position, grid: &Vec<Vec<Tile>>, wrap_type: &WrapType) {
         match self {
             Instruction::TurnLeft => position.facing = position.facing.left(),
             Instruction::TurnRight => position.facing = position.facing.right(),
@@ -411,6 +319,104 @@ impl WrapType {
                                     c = 3 * cube - 1;
                                     f = Direction::Left;
                                 }
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                }
+            },
+            WrapType::Cube2 => {
+                let cube = height / 4;
+                if cube != width / 3 {
+                    panic!("Not a cube2");
+                }
+                loop {
+                    if r < 0 && f == Direction::Up {
+                        if c < 2 * cube {
+                            // 1 -> 2
+                            r = c + 2 * cube;
+                            c = 0;
+                            f = Direction::Right;
+                        } else {
+                            // 6 -> 2
+                            r = 4 * cube - 1;
+                            c = c - 2 * cube;
+                            f = Direction::Up;
+                        }
+                    } else if c < 0 && f == Direction::Left {
+                        if r < 3 * cube {
+                            // 3 -> 1
+                            r = 3 * cube - r - 1;
+                            c = cube;
+                            f = Direction::Right;
+                        } else {
+                            // 2 -> 1
+                            c = r - 2 * cube;
+                            r = 0;
+                            f = Direction::Down;
+                        }
+                    } else if r == height && f == Direction::Down {
+                        // 2 -> 6
+                        c = c + 2 * cube;
+                        r = 0;
+                        f = Direction::Down;
+                    } else if c == width && f == Direction::Right {
+                        // 6 -> 5
+                        r = 3 * cube - r - 1;
+                        c = 2 * cube - 1;
+                        f = Direction::Left;
+                    } else if grid[r as usize][c as usize] == Tile::None {
+                        match f {
+                            Direction::Right => {
+                                if r < 2 * cube {
+                                    // 4 -> 6
+                                    c = r + cube;
+                                    r = cube - 1;
+                                    f = Direction::Up;
+                                } else if r < 3 * cube {
+                                    // 5 -> 6
+                                    r = 3 * cube - 1 - r;
+                                    c = 3 * cube - 1;
+                                    f = Direction::Left;
+                                } else {
+                                    // 2 -> 5
+                                    c = r - 2 * cube;
+                                    r = 3 * cube - 1;
+                                    f = Direction::Up;
+                                }
+                            },
+                            Direction::Down => {
+                                if c < 2 * cube {
+                                    // 5 -> 2
+                                    r = 2 * cube + c;
+                                    c = cube - 1;
+                                    f = Direction::Left;
+                                } else {
+                                    // 6 -> 4
+                                    r = c - cube;
+                                    c = 2 * cube - 1;
+                                    f = Direction::Left;
+                                }
+                            },
+                            Direction::Left => {
+                                if r < cube {
+                                    // 1 -> 3
+                                    c = 0;
+                                    r = 3 * cube - 1 - r;
+                                    f = Direction::Right;
+                                } else {
+                                    // 4 -> 3
+                                    c = r - cube;
+                                    r = 2 * cube;
+                                    f = Direction::Down;
+                                }
+                            },
+                            Direction::Up => {
+                                // 3 -> 4
+                                r = c + cube;
+                                c = cube;
+                                f = Direction::Right;
                             }
                         }
                     } else {
