@@ -1,3 +1,4 @@
+#![feature(hash_drain_filter)]
 use std::env;
 use std::fs;
 use std::str::FromStr;
@@ -13,7 +14,7 @@ struct Blueprint {
     obsidian_per_geode_robot: usize
 }
 
-#[derive(Hash, Eq, PartialEq, Copy, Clone)]
+#[derive(Hash, Eq, PartialEq, Copy, Clone, Debug)]
 struct State {
     minutes_remaining: usize,
     ore: usize,
@@ -46,6 +47,7 @@ fn main() {
             let final_state = max_geodes(&blueprints[bp_index-1], State::new(minutes), &mut HashMap::new());
             let quality = bp_index * final_state.geodes;
             println!("Blueprint {} makes {} geodes with a quality of {}", bp_index, final_state.geodes, quality);
+            println!("Final state: {:?}", final_state);
         } else {
             let mut sum = 0;
             for (i, bp) in blueprints.iter().enumerate() {
@@ -163,10 +165,23 @@ fn max_geodes(bp: &Blueprint, initial_state: State, cache: &mut HashMap<(Bluepri
             }
             best
         };
+        let cache_max = 100000000;
+        if cache.len() > cache_max {
+            let mut drain_size = 0;
+            while cache.len() > cache_max/2 {
+                let drained = cache.drain_filter(|(_, s), _| s.minutes_remaining <= drain_size).count();
+                if drained > 0 {
+                    println!("Drained {} of size {} while saving size {}", drained, drain_size, final_result.minutes_remaining);
+                }
+                drain_size += 1;
+            }
+        }
         cache.insert((*bp, initial_state), final_result);
         final_result
     }
 }
+
+
 
 fn best_possible_geodes(state: &State) -> usize {
     //includes: existing geodes, geodes made by existing robotos, a new robot every minute making geodes
