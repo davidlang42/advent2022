@@ -1,7 +1,9 @@
 use std::env;
 use std::fs;
 use std::str::FromStr;
+use std::collections::HashMap;
 
+#[derive(Hash, Eq, PartialEq, Copy, Clone)]
 struct Blueprint {
     ore_per_ore_robot: usize,
     ore_per_clay_robot: usize,
@@ -11,7 +13,7 @@ struct Blueprint {
     obsidian_per_geode_robot: usize
 }
 
-#[derive(Copy, Clone)]
+#[derive(Hash, Eq, PartialEq, Copy, Clone)]
 struct State {
     minutes_remaining: usize,
     ore: usize,
@@ -41,14 +43,14 @@ fn main() {
         let minutes: usize = args[3].parse().unwrap();
         if let Ok(bp_index) = args[2].parse::<usize>() {
             println!("Starting Blueprint {} for {} minutes", bp_index, minutes);
-            let final_state = max_geodes(&blueprints[bp_index-1], State::new(minutes));
+            let final_state = max_geodes(&blueprints[bp_index-1], State::new(minutes), &mut HashMap::new());
             let quality = bp_index * final_state.geodes;
             println!("Blueprint {} makes {} geodes with a quality of {}", bp_index, final_state.geodes, quality);
         } else {
             let mut sum = 0;
             for (i, bp) in blueprints.iter().enumerate() {
                 println!("Starting Blueprint {} for {} minutes", i+1, minutes);
-                let final_state = max_geodes(bp, State::new(minutes));
+                let final_state = max_geodes(bp, State::new(minutes), &mut HashMap::new());
                 let quality = (i+1) * final_state.geodes;
                 sum += quality;
                 println!("Blueprint {} makes {} geodes with a quality of {}", i+1, final_state.geodes, quality);
@@ -97,66 +99,72 @@ impl State {
     }
 }
 
-fn max_geodes(bp: &Blueprint, initial_state: State) -> State {
-    let mut state = initial_state;
-    let mut options: Vec<Option<Robot>> = Vec::new();
-    if state.ore >= bp.ore_per_geode_robot && state.obsidian >= bp.obsidian_per_geode_robot {
-        options.push(Some(Robot::Geode));
-    }
-    if state.ore >= bp.ore_per_obsidian_robot && state.clay >= bp.clay_per_obsidian_robot {
-        options.push(Some(Robot::Obsidian));
-    }
-    if state.ore >= bp.ore_per_clay_robot {
-        options.push(Some(Robot::Clay));
-    }
-    if state.ore >= bp.ore_per_ore_robot {
-        options.push(Some(Robot::Ore));
-    }
-    options.push(None);
-    state.ore += state.ore_robots;
-    state.clay += state.clay_robots;
-    state.obsidian += state.obsidian_robots;
-    state.geodes += state.geode_robots;
-    state.minutes_remaining -= 1;
-    //println!("{} min remaining: {} ore [{}], {} clay [{}], {} obsidian [{}], {} geodes [{}] => {} options", state.minutes_remaining, state.ore, state.ore_robots, state.clay, state.clay_robots, state.obsidian, state.obsidian_robots, state.geodes, state.geode_robots, options.len());
-    if state.minutes_remaining == 0 {
-        state
+fn max_geodes(bp: &Blueprint, initial_state: State, cache: &mut HashMap<(Blueprint, State), State>) -> State {
+    if let Some(existing) = cache.get(&(*bp, initial_state)) {
+        *existing
     } else {
-        let mut best = State::new(1);
-        for option in &options {
-            let mut new_state = state;
-            if let Some(new_robot) = option {
-                match new_robot {
-                    Robot::Geode => {
-                        new_state.ore -= bp.ore_per_geode_robot;
-                        new_state.obsidian -= bp.obsidian_per_geode_robot;
-                        new_state.geode_robots += 1;
-                    },
-                    Robot::Obsidian => {
-                        new_state.ore -= bp.ore_per_obsidian_robot;
-                        new_state.clay -= bp.clay_per_obsidian_robot;
-                        new_state.obsidian_robots += 1;
-                    },
-                    Robot::Clay => {
-                        new_state.ore -= bp.ore_per_clay_robot;
-                        new_state.clay_robots += 1;
-                    },
-                    Robot::Ore => {
-                        new_state.ore -= bp.ore_per_ore_robot;
-                        new_state.ore_robots += 1;
+        let mut state = initial_state;
+        let mut options: Vec<Option<Robot>> = Vec::new();
+        if state.ore >= bp.ore_per_geode_robot && state.obsidian >= bp.obsidian_per_geode_robot {
+            options.push(Some(Robot::Geode));
+        }
+        if state.ore >= bp.ore_per_obsidian_robot && state.clay >= bp.clay_per_obsidian_robot {
+            options.push(Some(Robot::Obsidian));
+        }
+        if state.ore >= bp.ore_per_clay_robot {
+            options.push(Some(Robot::Clay));
+        }
+        if state.ore >= bp.ore_per_ore_robot {
+            options.push(Some(Robot::Ore));
+        }
+        options.push(None);
+        state.ore += state.ore_robots;
+        state.clay += state.clay_robots;
+        state.obsidian += state.obsidian_robots;
+        state.geodes += state.geode_robots;
+        state.minutes_remaining -= 1;
+        //println!("{} min remaining: {} ore [{}], {} clay [{}], {} obsidian [{}], {} geodes [{}] => {} options", state.minutes_remaining, state.ore, state.ore_robots, state.clay, state.clay_robots, state.obsidian, state.obsidian_robots, state.geodes, state.geode_robots, options.len());
+        let final_result = if state.minutes_remaining == 0 {
+            state
+        } else {
+            let mut best = State::new(1);
+            for option in &options {
+                let mut new_state = state;
+                if let Some(new_robot) = option {
+                    match new_robot {
+                        Robot::Geode => {
+                            new_state.ore -= bp.ore_per_geode_robot;
+                            new_state.obsidian -= bp.obsidian_per_geode_robot;
+                            new_state.geode_robots += 1;
+                        },
+                        Robot::Obsidian => {
+                            new_state.ore -= bp.ore_per_obsidian_robot;
+                            new_state.clay -= bp.clay_per_obsidian_robot;
+                            new_state.obsidian_robots += 1;
+                        },
+                        Robot::Clay => {
+                            new_state.ore -= bp.ore_per_clay_robot;
+                            new_state.clay_robots += 1;
+                        },
+                        Robot::Ore => {
+                            new_state.ore -= bp.ore_per_ore_robot;
+                            new_state.ore_robots += 1;
+                        }
+                    }
+                }
+                if best_possible_geodes(&new_state) <= best.geodes {
+                    // don't bother
+                } else {
+                    let result = max_geodes(bp, new_state, cache);
+                    if result.geodes > best.geodes {
+                        best = result;
                     }
                 }
             }
-            if best_possible_geodes(&new_state) <= best.geodes {
-                // don't bother
-            } else {
-                let result = max_geodes(bp, new_state);
-                if result.geodes > best.geodes {
-                    best = result;
-                }
-            }
-        }
-        best
+            best
+        };
+        cache.insert((*bp, initial_state), final_result);
+        final_result
     }
 }
 
