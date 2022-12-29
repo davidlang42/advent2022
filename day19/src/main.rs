@@ -128,7 +128,6 @@ fn max_geodes(bp: &Blueprint, initial_state: State, cache: &mut HashMap<(Bluepri
             state
         } else {
             let mut best = State::new(1);
-            let mut new_states = Vec::new();
             for option in &options {
                 let mut new_state = state;
                 if let Some(new_robot) = option {
@@ -153,19 +152,7 @@ fn max_geodes(bp: &Blueprint, initial_state: State, cache: &mut HashMap<(Bluepri
                         }
                     }
                 }
-                if let Some(already_cached) = cache.get(&(*bp, new_state)) {
-                    // shortcut already cached
-                    if already_cached.geodes > best.geodes {
-                        best = *already_cached;
-                    }
-                } else {
-                    let best_possible = best_possible_geodes(&new_state);
-                    new_states.push((new_state, best_possible));
-                }
-            }
-            new_states.sort_by(|(_, a), (_, b)| b.cmp(a)); // highest first
-            for (new_state, best_possible) in new_states {
-                if best_possible <= best.geodes {
+                if best_possible_geodes(&new_state) <= best.geodes {
                     // don't bother
                 } else {
                     let result = max_geodes(bp, new_state, cache);
