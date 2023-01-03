@@ -22,10 +22,10 @@ Solved in rust as an exercise
 - [x] Day 16
 - [x] Day 17
 - [x] Day 18
-- [ ] Day 19
+- [x] Day 19
 - [x] Day 20
 - [x] Day 21
-- [ ] Day 22
+- [x] Day 22
 - [x] Day 23
 - [x] Day 24
 - [x] Day 25
